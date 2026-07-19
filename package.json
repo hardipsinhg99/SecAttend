@@ -1,0 +1,18 @@
+{
+  "name": "secattend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @secattend/api\" \"npm run dev -w @secattend/web\"",
+    "build": "npm run build -w @secattend/api && npm run build -w @secattend/web",
+    "lint": "npm run lint -w @secattend/api && npm run lint -w @secattend/web",
+    "test": "npm run test -w @secattend/api",
+    "db:push": "npm run db:push -w @secattend/api",
+    "db:seed": "npm run db:seed -w @secattend/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "engines": { "node": ">=20" }
+}

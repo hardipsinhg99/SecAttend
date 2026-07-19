@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+coverage
+*.log
+.DS_Store
+uploads/*
+!uploads/.gitkeep
+apps/api/prisma/dev.db

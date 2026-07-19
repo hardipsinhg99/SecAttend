@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-secattend}
+      POSTGRES_USER: ${POSTGRES_USER:-secattend}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secattend_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-secattend} -d ${POSTGRES_DB:-secattend}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [secattend]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-secattend}:${POSTGRES_PASSWORD:-secattend_dev_password}@db:5432/${POSTGRES_DB:-secattend}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      ATTENDANCE_EDIT_HOURS: ${ATTENDANCE_EDIT_HOURS:-48}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [secattend]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [secattend]
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  secattend:
+    driver: bridge
