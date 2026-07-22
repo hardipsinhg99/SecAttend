@@ -209,7 +209,7 @@ a { color: inherit; }
 .payment-toggle:hover:not(:disabled) { transform: translateY(-1px); }.payment-toggle:disabled { cursor: wait; opacity: .58; }.payment-toggle--paid { border-color: var(--color-success); background: var(--color-success-soft); color: var(--color-success); }.payment-toggle--unpaid { border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-line)); background: var(--color-warning-soft); color: var(--color-warning); }.payment-date { display: block; margin-top: 5px; color: var(--color-faint); font-size: 9px; text-align: center; }
 
 /* Mobile-safe dialog containment */
-.modal-backdrop { overscroll-behavior: contain; }.modal { display: flex; flex-direction: column; max-height: calc(100dvh - 2.5rem); }.modal > header { flex: 0 0 auto; }.modal > form, .modal > .confirm-dialog, .modal > .import-zone { min-width: 0; }.modal input, .modal select, .modal textarea { max-width: 100%; }.modal__actions { flex-wrap: wrap; }
+.modal-backdrop { overscroll-behavior: contain; }.modal { display: flex; flex-direction: column; max-height: calc(100dvh - 2.5rem); }.modal > header { flex: 0 0 auto; }.modal > :not(header) { min-width: 0; min-height: 0; }.modal > .confirm-dialog { overflow-y: auto; overscroll-behavior: contain; }.modal input, .modal select, .modal textarea { max-width: 100%; }.modal__actions { flex-wrap: wrap; }
 
 @media (max-width: 900px) {
   .mobile-header__brand { min-width: 0; }.mobile-header__brand strong { max-width: 180px; font-size: 11px; line-height: 1.15; }
@@ -217,11 +217,11 @@ a { color: inherit; }
 }
 
 @media (max-width: 680px) {
-  .modal-backdrop { height: 100dvh; }.modal { max-height: 94dvh; }.modal > header { position: sticky; top: 0; z-index: 3; background: var(--color-surface); }.modal__actions { padding-bottom: max(var(--space-3), env(safe-area-inset-bottom)); }
+  .modal-backdrop { height: 100dvh; }.modal { max-height: 94dvh; }.modal > header { position: sticky; top: 0; z-index: 3; padding-top: max(var(--space-4), env(safe-area-inset-top)); background: var(--color-surface); }.modal__actions { flex-direction: column-reverse; padding-bottom: max(var(--space-3), env(safe-area-inset-bottom)); }.modal__actions .button { width: 100%; }
   .payroll-controls .live-chip { align-self: flex-start; }.payment-toggle { width: 100%; }.payment-date { text-align: left; }
 }
 
 @media (max-width: 420px) {
-  .modal > header { gap: var(--space-3); }.modal h2 { font-size: var(--size-lg); }.modal__actions { flex-direction: column-reverse; }.modal__actions .button { width: 100%; }
+  .modal > header { gap: var(--space-3); }.modal h2 { font-size: var(--size-lg); }
   .mobile-header__brand strong { max-width: 126px; font-size: 9px; }.mobile-header__brand .brand-logo { width: 38px; height: 38px; }
 }
