@@ -25,6 +25,16 @@ services:
         value: 8h
       - key: WEB_ORIGIN
         value: https://secattend-web.onrender.com
+      - key: PRODUCTION_RESET_ID
+        sync: false
+      - key: CONFIRM_PRODUCTION_RESET
+        sync: false
+      - key: PRODUCTION_ADMIN_NAME
+        sync: false
+      - key: PRODUCTION_ADMIN_EMAIL
+        sync: false
+      - key: PRODUCTION_ADMIN_PASSWORD
+        sync: false
     buildFilter:
       paths:
         - apps/api/**

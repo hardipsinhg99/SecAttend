@@ -5,12 +5,46 @@ import { useAuth } from '../context/AuthContext';
 import { BrandLogo } from '../components/BrandLogo';
 
 export function LoginPage() {
-  const { login } = useAuth(); const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@secattend.local'); const [password, setPassword] = useState('Secure@123');
-  const [visible, setVisible] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
-  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); setError(''); try { await login(email, password); navigate('/'); } catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in'); } finally { setBusy(false); } }
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await login(email, password);
+      navigate('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <main className="login-page">
     <section className="login-story"><div className="login-story__grid" /><div className="login-brand"><BrandLogo /><div><strong>SHREEDEVI SECURITY SERVICE</strong><span>Workforce operations</span></div></div><div className="login-story__content"><span className="login-pill"><ShieldCheck size={15} /> Built for accountable teams</span><h1>Every shift.<br />Every person.<br /><em>Accounted for.</em></h1><p>A clear operational picture across your guards, locations, attendance, and payroll—without the spreadsheet chase.</p><div className="login-proof"><div><span>99.8%</span><p>attendance records completed on time</p></div><div><span>3.2 hrs</span><p>saved per manager every week</p></div></div></div><footer><span><Check size={14} /> Role-based access</span><span><Check size={14} /> Complete audit trail</span><span><Check size={14} /> Historical editing open</span></footer></section>
-    <section className="login-panel"><div className="login-card"><div className="login-card__icon"><LockKeyhole /></div><p className="eyebrow">Secure workspace</p><h2>Welcome back</h2><p>Sign in to manage today’s operations.</p><form onSubmit={submit}><label htmlFor="email">Work email</label><input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /><label htmlFor="password">Password</label><div className="password-field"><input id="password" type={visible ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" minLength={8} required /><button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>{visible ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{error && <p className="form-error">{error}</p>}<button className="button button--primary button--large" disabled={busy}>{busy ? 'Signing in…' : 'Sign in securely'}<ArrowRight size={18} /></button></form><div className="demo-accounts"><span>Demo access</span><button onClick={() => { setEmail('admin@secattend.local'); setPassword('Secure@123'); }}>Admin</button><button onClick={() => { setEmail('manager@secattend.local'); setPassword('Secure@123'); }}>Manager</button></div></div><p className="login-help">Need help? Contact your agency administrator.</p></section>
+    <section className="login-panel">
+      <div className="login-card">
+        <div className="login-card__icon"><LockKeyhole /></div>
+        <p className="eyebrow">Secure workspace</p>
+        <h2>Welcome back</h2>
+        <p>Sign in with your administrator credentials.</p>
+        <form onSubmit={submit}>
+          <label htmlFor="email">Work email</label>
+          <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+          <label htmlFor="password">Password</label>
+          <div className="password-field"><input id="password" type={visible ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" minLength={8} required /><button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>{visible ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+          {error && <p className="form-error">{error}</p>}
+          <button className="button button--primary button--large" disabled={busy}>{busy ? 'Signing in…' : 'Sign in securely'}<ArrowRight size={18} /></button>
+        </form>
+      </div>
+      <p className="login-help">Need help? Contact your system administrator.</p>
+    </section>
   </main>;
 }

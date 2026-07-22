@@ -26,7 +26,7 @@ SHREEDEVI SECURITY SERVICE is a production-oriented attendance and payroll works
    docker compose up --build
    ```
 
-3. Seed local demo data once:
+3. Create the local administrator once after setting `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `.env`:
 
    ```bash
    docker compose exec api node apps/api/dist/prisma/seed.js
@@ -34,16 +34,7 @@ SHREEDEVI SECURITY SERVICE is a production-oriented attendance and payroll works
 
 4. Open [http://localhost:8080](http://localhost:8080).
 
-The API applies versioned Prisma migrations at startup. Named Docker volumes preserve PostgreSQL data. Demo data is never seeded automatically in production; run `npm run db:seed` only in development.
-
-### Demo accounts
-
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@secattend.local` | `Secure@123` |
-| Manager | `manager@secattend.local` | `Secure@123` |
-
-Change or remove these seeded credentials before a production deployment.
+The API applies versioned Prisma migrations at startup. Named Docker volumes preserve PostgreSQL data. No demo users or operational records are created automatically.
 
 ## Local development
 
@@ -96,7 +87,7 @@ For larger deployments, the API can run as multiple stateless replicas behind a 
 
 ## Production checklist
 
-- Replace demo accounts and secrets.
+- Store administrator credentials and all secrets only in Render environment variables.
 - Use a managed PostgreSQL instance with encryption and backups.
 - Terminate TLS at the load balancer or ingress.
 - Add object storage for photos/import artifacts.
@@ -105,3 +96,17 @@ For larger deployments, the API can run as multiple stateless replicas behind a 
 - Add your organization’s retention and privacy policy.
 
 For an existing database originally created with `prisma db push`, the supplied API entrypoint detects Prisma error `P3005`, records the matching legacy baseline once, and then applies the dual-salary migration. Other migration errors still abort startup instead of being ignored.
+
+## One-time Render production reset
+
+The production entrypoint includes an idempotent, guarded reset. It permanently deletes all operational data and creates exactly one administrator only when all five environment variables below are present:
+
+```env
+PRODUCTION_RESET_ID=fresh-production-2026-07-23-v1
+CONFIRM_PRODUCTION_RESET=DELETE_ALL_SHREEDEVI_DATA
+PRODUCTION_ADMIN_NAME=SHREEDEVI Administrator
+PRODUCTION_ADMIN_EMAIL=admin@your-company-domain.com
+PRODUCTION_ADMIN_PASSWORD=use-a-unique-14+-character-strong-password
+```
+
+Set these as secret environment variables on the `secattend-api` Render service and deploy once. Confirm the log contains `one administrator created`, then remove `CONFIRM_PRODUCTION_RESET` and `PRODUCTION_ADMIN_PASSWORD` from Render. The reset ID is recorded in the database, so the same ID cannot erase data again after a restart. A future intentional reset requires a new unique ID and the confirmation value.

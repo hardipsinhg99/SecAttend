@@ -16,4 +16,5 @@ else
   fi
 fi
 
+node apps/api/dist/prisma/production-reset.js
 exec node apps/api/dist/src/server.js
