@@ -12,7 +12,8 @@ import { salaryRouter } from './routes/salary.js';
 import { reportsRouter } from './routes/reports.js';
 import { locationsRouter } from './routes/locations.js';
 import { dashboardRouter } from './routes/dashboard.js';
-import { errorHandler, notFound } from './lib/http.js';
+import { asyncHandler, errorHandler, notFound } from './lib/http.js';
+import { prisma } from './lib/prisma.js';
 
 export const app = express();
 app.set('trust proxy', 1);
@@ -20,7 +21,10 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: config.WEB_ORIGIN.split(',').map((origin) => origin.trim()), credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'secattend-api', timestamp: new Date().toISOString() }));
+app.get('/api/health', asyncHandler(async (_req, res) => {
+  await prisma.$queryRaw`SELECT 1`;
+  res.json({ status: 'ok', service: 'secattend-api', timestamp: new Date().toISOString() });
+}));
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);

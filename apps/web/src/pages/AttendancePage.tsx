@@ -13,6 +13,7 @@ export function AttendancePage() {
   const loadSummary = useCallback(() => api<{ data: DaySummary[] }>(`/attendance/calendar/summary?month=${monthKey}`).then((result) => setSummary(result.data)), [monthKey]);
   const loadDay = useCallback(async () => { setLoading(true); try { const result = await api<{ data: Guard[]; editable: boolean }>(`/attendance/${dateKey}`); setGuards(result.data); setRecords(Object.fromEntries(result.data.filter((g) => g.attendance).map((g) => [g.id, g.attendance!.status]))); setEditable(result.editable && !isAfter(selected, new Date())); } finally { setLoading(false); } }, [dateKey, selected]);
   useEffect(() => { loadSummary(); }, [loadSummary]); useEffect(() => { loadDay(); }, [loadDay]);
+  useEffect(() => { if (format(selected, 'yyyy-MM') !== monthKey) setSelected(startOfMonth(month)); }, [month, monthKey, selected]);
   const summaryMap = useMemo(() => new Map(summary.map((item) => [item.date, item])), [summary]);
   const days = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) }); const blanks = Array.from({ length: getDay(startOfMonth(month)) });
   function statusFor(day: Date) { if (isAfter(day, new Date())) return 'future'; const item = summaryMap.get(format(day, 'yyyy-MM-dd')); return item?.state ?? 'none'; }

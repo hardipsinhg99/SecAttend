@@ -22,3 +22,15 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 export function currency(value: string | number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value));
 }
+
+export async function downloadFile(path: string, filename: string) {
+  const token = localStorage.getItem('secattend_token');
+  const response = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!response.ok) throw new ApiError('Download failed', response.status);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

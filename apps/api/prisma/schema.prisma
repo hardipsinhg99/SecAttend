@@ -56,7 +56,8 @@ model Guard {
   email         String?
   address       String
   photoUrl      String?
-  monthlySalary Decimal       @db.Decimal(12, 2)
+  guardMonthlySalary   Decimal       @map("monthlySalary") @db.Decimal(12, 2)
+  companyMonthlySalary Decimal       @default(0) @db.Decimal(12, 2)
   status        AccountStatus @default(ACTIVE)
   locationId    String
   location      Location      @relation(fields: [locationId], references: [id])
@@ -92,10 +93,14 @@ model SalaryRecord {
   monthYear     DateTime  @db.Date
   totalDays     Int
   leaveDays     Int
-  dailyRate     Decimal  @db.Decimal(12, 2)
-  grossSalary   Decimal  @db.Decimal(12, 2)
-  deductions    Decimal  @db.Decimal(12, 2)
-  netSalary     Decimal  @db.Decimal(12, 2)
+  guardDailyRate       Decimal  @map("dailyRate") @db.Decimal(12, 2)
+  guardGrossSalary     Decimal  @map("grossSalary") @db.Decimal(12, 2)
+  guardDeductions      Decimal  @map("deductions") @db.Decimal(12, 2)
+  guardNetSalary       Decimal  @map("netSalary") @db.Decimal(12, 2)
+  companyDailyRate     Decimal  @default(0) @db.Decimal(12, 2)
+  companyGrossSalary   Decimal  @default(0) @db.Decimal(12, 2)
+  companyDeductions    Decimal  @default(0) @db.Decimal(12, 2)
+  companyNetSalary     Decimal  @default(0) @db.Decimal(12, 2)
   generatedAt   DateTime @default(now())
 
   @@unique([guardId, monthYear])

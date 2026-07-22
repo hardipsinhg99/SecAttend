@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, CalendarCheck, CheckCircle2, Clock3, MapPin, ShieldCheck, UserCheck, Users, WalletCards } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../lib/api';
+import { api, currency } from '../lib/api';
 import type { DashboardData } from '../types';
 import { LoadingState, PageHeader } from '../components/ui';
 
@@ -17,7 +17,7 @@ export function DashboardPage() {
     { label: 'Active guards', value: stats.totalGuards, note: 'Across all locations', icon: ShieldCheck, tone: 'green' },
     { label: 'Attendance today', value: `${stats.attendancePercent}%`, note: `${stats.markedToday} of ${stats.totalGuards} marked`, icon: UserCheck, tone: 'orange' },
     { label: 'Active managers', value: stats.activeManagers, note: 'Field supervisors', icon: Users, tone: 'blue' },
-    { label: 'Pending payroll', value: stats.pendingSalaries, note: 'Current month', icon: WalletCards, tone: 'violet' },
+    { label: 'Guard payroll', value: currency(stats.monthlyGuardPayroll), note: 'Live net payable this month', icon: WalletCards, tone: 'violet' },
   ] : [
     { label: 'Assigned guards', value: stats.totalGuards, note: 'Across your locations', icon: ShieldCheck, tone: 'green' },
     { label: 'Attendance today', value: `${stats.attendancePercent}%`, note: `${stats.markedToday} of ${stats.totalGuards} marked`, icon: UserCheck, tone: 'orange' },

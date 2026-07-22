@@ -15,7 +15,8 @@ async function main() {
   const names = ['Rohan Patil', 'Sanjay Kumar', 'Vikram Singh', 'Imran Shaikh', 'Deepak Yadav', 'Nitin Jadhav', 'Arjun Pawar', 'Manoj Gupta', 'Kiran More', 'Ravi Chavan', 'Suresh Nair', 'Ajay Verma'];
   for (const [index, name] of names.entries()) {
     const employeeId = `SG-${String(index + 101).padStart(4, '0')}`;
-    await prisma.guard.upsert({ where: { employeeId }, update: {}, create: { name, employeeId, phone: `+91 90000 ${String(11000 + index)}`, email: `guard${index + 1}@example.com`, address: `${20 + index}, Mumbai, Maharashtra`, monthlySalary: 24000 + (index % 4) * 1500, locationId: locations[index % locations.length]!.id } });
+    const guardMonthlySalary = 24000 + (index % 4) * 1500;
+    await prisma.guard.upsert({ where: { employeeId }, update: { companyMonthlySalary: guardMonthlySalary + 6000 }, create: { name, employeeId, phone: `+91 90000 ${String(11000 + index)}`, email: `guard${index + 1}@example.com`, address: `${20 + index}, Mumbai, Maharashtra`, guardMonthlySalary, companyMonthlySalary: guardMonthlySalary + 6000, locationId: locations[index % locations.length]!.id } });
   }
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const guards = await prisma.guard.findMany({ where: { status: 'ACTIVE' } });

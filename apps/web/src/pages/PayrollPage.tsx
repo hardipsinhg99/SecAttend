@@ -1,18 +1,43 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Calculator, Download, RefreshCw, Search, WalletCards } from 'lucide-react';
-import { format, subMonths } from 'date-fns';
-import { api, currency } from '../lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, RefreshCw, Search, WalletCards } from 'lucide-react';
+import { format } from 'date-fns';
+import { api, currency, downloadFile } from '../lib/api';
 import { Avatar, EmptyState, LoadingState, PageHeader, Toast } from '../components/ui';
 
-type SalaryRow = { id: string; totalDays: number; leaveDays: number; dailyRate: string; grossSalary: string; deductions: string; netSalary: string; generatedAt: string; guard: { id: string; name: string; employeeId: string; location: { name: string } } };
+type SalaryRow = {
+  id: string; totalDays: number; leaveDays: number;
+  guardDailyRate: number; guardGrossSalary: number; guardDeductions: number; guardNetSalary: number;
+  companyDailyRate: number; companyGrossSalary: number; companyDeductions: number; companyNetSalary: number;
+  guard: { id: string; name: string; employeeId: string; location: { name: string } };
+};
+type Totals = { guardGross: number; guardDeductions: number; guardNet: number; companyGross: number; companyDeductions: number; companyNet: number; margin: number };
+const emptyTotals: Totals = { guardGross: 0, guardDeductions: 0, guardNet: 0, companyGross: 0, companyDeductions: 0, companyNet: 0, margin: 0 };
+
 export function PayrollPage() {
-  const [month, setMonth] = useState(format(subMonths(new Date(), 1), 'yyyy-MM')); const [rows, setRows] = useState<SalaryRow[]>([]); const [totals, setTotals] = useState({ gross: 0, deductions: 0, net: 0 }); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [search, setSearch] = useState(''); const [toast, setToast] = useState('');
-  const load = useCallback(async () => { setLoading(true); try { const result = await api<{ data: SalaryRow[]; totals: typeof totals }>(`/salary/${month}`); setRows(result.data); setTotals(result.totals); } finally { setLoading(false); } }, [month]);
-  useEffect(() => { load(); }, [load]);
-  async function calculate() { setBusy(true); try { const result = await api<{ generated: number }>(`/salary/calculate/${month}`, { method: 'POST' }); setToast(`Payroll calculated for ${result.generated} guards`); await load(); } catch (err) { setToast(err instanceof Error ? err.message : 'Calculation failed'); } finally { setBusy(false); } }
-  const filtered = rows.filter((row) => `${row.guard.name} ${row.guard.employeeId}`.toLowerCase().includes(search.toLowerCase()));
-  return <div className="page"><PageHeader eyebrow="Compensation operations" title="Payroll" description="Calculate leave deductions and review monthly salary summaries." actions={<><button className="button button--secondary" disabled={!rows.length}><Download size={17} />Export summary</button><button className="button button--primary" onClick={calculate} disabled={busy}><Calculator size={17} />{busy ? 'Calculating…' : 'Calculate payroll'}</button></>} />
-    <section className="payroll-controls"><label>Payroll month<input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label><div className="search-box"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a guard…" /></div><button className="icon-button" onClick={load} aria-label="Refresh payroll"><RefreshCw size={18} /></button></section>
-    <section className="payroll-summary"><article><span>Gross payroll</span><strong>{currency(totals.gross)}</strong><p>Before deductions</p></article><article><span>Leave deductions</span><strong>{currency(totals.deductions)}</strong><p>Based on daily rates</p></article><article className="payroll-summary__net"><span>Net payable</span><strong>{currency(totals.net)}</strong><p>Across {rows.length} guards</p></article></section>
-    <section className="table-card">{loading ? <LoadingState /> : !filtered.length ? <EmptyState icon={<WalletCards />} title="Payroll not calculated" description="Choose a month and calculate payroll to generate salary records." /> : <div className="data-table-wrap"><table className="data-table"><thead><tr><th>Guard</th><th>Location</th><th>Daily rate</th><th>Leave days</th><th>Gross salary</th><th>Deductions</th><th>Net salary</th></tr></thead><tbody>{filtered.map((row) => <tr key={row.id}><td><div className="person-cell"><Avatar name={row.guard.name} /><div><strong>{row.guard.name}</strong><span>{row.guard.employeeId}</span></div></div></td><td>{row.guard.location.name}</td><td>{currency(row.dailyRate)}</td><td><span className={row.leaveDays ? 'leave-count' : ''}>{row.leaveDays}</span></td><td>{currency(row.grossSalary)}</td><td className="deduction">− {currency(row.deductions)}</td><td><strong className="salary-cell">{currency(row.netSalary)}</strong></td></tr>)}</tbody></table></div>}</section>{toast && <Toast message={toast} onClose={() => setToast('')} />}</div>;
+  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [rows, setRows] = useState<SalaryRow[]>([]);
+  const [totals, setTotals] = useState<Totals>(emptyTotals);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [toast, setToast] = useState('');
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await api<{ data: SalaryRow[]; totals: Totals }>(`/salary/${month}`);
+      setRows(result.data); setTotals(result.totals);
+    } catch (err) { setToast(err instanceof Error ? err.message : 'Could not load payroll'); }
+    finally { setLoading(false); }
+  }, [month]);
+  useEffect(() => { void load(); }, [load]);
+  const filtered = useMemo(() => rows.filter((row) => `${row.guard.name} ${row.guard.employeeId}`.toLowerCase().includes(search.toLowerCase())), [rows, search]);
+  async function exportPayroll() {
+    try { await downloadFile(`/salary/${month}/export`, `payroll-${month}.xlsx`); }
+    catch (err) { setToast(err instanceof Error ? err.message : 'Export failed'); }
+  }
+  return <div className="page"><PageHeader eyebrow="Live compensation operations" title="Payroll" description="Guard pay and company billing update automatically as leave is recorded." actions={<button className="button button--primary" onClick={exportPayroll} disabled={!rows.length}><Download size={17} />Export payroll</button>} />
+    <section className="payroll-controls"><label>Payroll month<input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label><div className="search-box"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a guard…" aria-label="Find a guard" /></div><button className="icon-button" onClick={load} aria-label="Refresh live payroll"><RefreshCw size={18} /></button><span className="live-chip"><i /> Live from attendance</span></section>
+    <section className="payroll-summary payroll-summary--four"><article><span>Company billing</span><strong>{currency(totals.companyNet)}</strong><p>After {currency(totals.companyDeductions)} leave deduction</p></article><article><span>Guard payroll</span><strong>{currency(totals.guardNet)}</strong><p>Net in-hand payable</p></article><article><span>Total leave deductions</span><strong>{currency(totals.guardDeductions)}</strong><p>Guard-side deduction</p></article><article className="payroll-summary__net"><span>Agency margin</span><strong>{currency(totals.margin)}</strong><p>Billing less guard pay</p></article></section>
+    <section className="table-card">{loading ? <LoadingState label="Calculating live payroll" /> : !filtered.length ? <EmptyState icon={<WalletCards />} title="No payroll rows" description="No active guards match this month and search." /> : <div className="data-table-wrap"><table className="data-table payroll-table"><thead><tr><th>Guard</th><th>Location</th><th>Leave</th><th>Guard base</th><th>Guard deduction</th><th>Guard payable</th><th>Company base</th><th>Company deduction</th><th>Company billing</th></tr></thead><tbody>{filtered.map((row) => <tr key={row.id}><td data-label="Guard"><div className="person-cell"><Avatar name={row.guard.name} /><div><strong>{row.guard.name}</strong><span>{row.guard.employeeId}</span></div></div></td><td data-label="Location">{row.guard.location.name}</td><td data-label="Leave"><span className={row.leaveDays ? 'leave-count' : ''}>{row.leaveDays} / {row.totalDays}</span></td><td data-label="Guard base">{currency(row.guardGrossSalary)}</td><td data-label="Guard deduction" className="deduction">− {currency(row.guardDeductions)}</td><td data-label="Guard payable"><strong className="salary-cell">{currency(row.guardNetSalary)}</strong></td><td data-label="Company base">{currency(row.companyGrossSalary)}</td><td data-label="Company deduction" className="deduction">− {currency(row.companyDeductions)}</td><td data-label="Company billing"><strong className="salary-cell">{currency(row.companyNetSalary)}</strong></td></tr>)}</tbody></table></div>}</section>
+    {toast && <Toast type="error" message={toast} onClose={() => setToast('')} />}
+  </div>;
 }

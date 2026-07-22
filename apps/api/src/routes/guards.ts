@@ -18,7 +18,8 @@ const guardInput = z.object({
   address: z.string().trim().min(3).max(300),
   locationId: z.string().min(1),
   photoUrl: z.string().url().optional().or(z.literal('')),
-  monthlySalary: z.coerce.number().positive().max(10_000_000),
+  guardMonthlySalary: z.coerce.number().positive().max(10_000_000),
+  companyMonthlySalary: z.coerce.number().positive().max(10_000_000),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });
 
@@ -92,7 +93,9 @@ guardsRouter.post('/import/excel', authorize('ADMIN'), upload.single('file'), as
     const locationId = byName.get(String(row.Location).trim().toLowerCase());
     const parsed = guardInput.safeParse({
       name: row.Name, employeeId: row.EmployeeID, phone: String(row.Phone), email: row.Email,
-      address: row.Address, locationId, monthlySalary: row.MonthlySalary,
+      address: row.Address, locationId,
+      guardMonthlySalary: row.GuardMonthlySalary ?? row.MonthlySalary,
+      companyMonthlySalary: row.CompanyMonthlySalary,
     });
     if (!parsed.success) { errors.push({ row: index + 2, message: parsed.error.issues[0]?.message ?? 'Invalid row' }); continue; }
     try {
