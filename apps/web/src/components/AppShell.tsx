@@ -19,15 +19,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const nav = user?.role === 'ADMIN' ? adminNav : adminNav.filter((item) => ['/', '/guards', '/attendance'].includes(item.to));
+  const displayName = user?.role === 'ADMIN' ? 'Admin' : user?.name ?? '';
   return <div className="app-shell">
     <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
       <div className="sidebar__brand"><BrandLogo /><div><strong>SHREEDEVI SECURITY SERVICE</strong><span>Workforce operations</span></div><button className="icon-button sidebar__close" onClick={() => setOpen(false)} aria-label="Close navigation"><X /></button></div>
       <div className="sidebar__context"><span>Workspace</span><strong>SHREEDEVI SECURITY SERVICE</strong><ChevronDown size={15} /></div>
       <nav aria-label="Main navigation">{nav.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} onClick={() => setOpen(false)} className={({ isActive }) => isActive ? 'active' : ''}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar__status"><span className="status-dot" /><div><strong>All systems operational</strong><span>Last sync just now</span></div></div>
-      <div className="sidebar__user"><Avatar name={user!.name} /><div><strong>{user!.name}</strong><span>{user!.role === 'ADMIN' ? 'Administrator' : 'Site Manager'}</span></div><button className="icon-button" onClick={logout} aria-label="Sign out"><LogOut size={18} /></button></div>
+      <div className="sidebar__user"><Avatar name={displayName} /><div><strong>{displayName}</strong><span>{user!.role === 'ADMIN' ? 'Administrator' : 'Site Manager'}</span></div><button className="icon-button" onClick={logout} aria-label="Sign out"><LogOut size={18} /></button></div>
     </aside>
     {open && <button className="sidebar-scrim" onClick={() => setOpen(false)} aria-label="Close navigation" />}
-    <div className="main-column"><header className="mobile-header"><button className="icon-button" onClick={() => setOpen(true)} aria-label="Open navigation"><Menu /></button><div className="mobile-header__brand"><BrandLogo decorative /><strong>SHREEDEVI SECURITY SERVICE</strong></div><Avatar name={user!.name} size="sm" /></header><main>{children}</main></div>
+    <div className="main-column"><header className="mobile-header"><button className="icon-button" onClick={() => setOpen(true)} aria-label="Open navigation"><Menu /></button><div className="mobile-header__brand"><BrandLogo decorative /><strong>SHREEDEVI SECURITY SERVICE</strong></div><Avatar name={displayName} size="sm" /></header><main>{children}</main></div>
   </div>;
 }

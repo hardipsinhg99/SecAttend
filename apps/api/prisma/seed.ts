@@ -6,15 +6,14 @@ const prisma = new PrismaClient();
 
 async function main() {
   const input = z.object({
-    ADMIN_NAME: z.string().trim().min(2).max(100),
     ADMIN_EMAIL: z.string().trim().email().transform((value) => value.toLowerCase()),
     ADMIN_PASSWORD: z.string().min(14).max(128),
   }).parse(process.env);
   const passwordHash = await bcrypt.hash(input.ADMIN_PASSWORD, 12);
   await prisma.user.upsert({
     where: { email: input.ADMIN_EMAIL },
-    update: { name: input.ADMIN_NAME, role: Role.ADMIN, status: 'ACTIVE', passwordHash },
-    create: { name: input.ADMIN_NAME, email: input.ADMIN_EMAIL, role: Role.ADMIN, status: 'ACTIVE', passwordHash },
+    update: { name: 'Admin', role: Role.ADMIN, status: 'ACTIVE', passwordHash },
+    create: { name: 'Admin', email: input.ADMIN_EMAIL, role: Role.ADMIN, status: 'ACTIVE', passwordHash },
   });
   process.stdout.write(`Administrator ${input.ADMIN_EMAIL} is ready.\n`);
 }

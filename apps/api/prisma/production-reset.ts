@@ -23,7 +23,6 @@ async function main() {
   const input = z.object({
     NODE_ENV: z.literal('production'),
     CONFIRM_PRODUCTION_RESET: z.literal('DELETE_ALL_SHREEDEVI_DATA'),
-    PRODUCTION_ADMIN_NAME: z.string().trim().min(2).max(100),
     PRODUCTION_ADMIN_EMAIL: z.string().trim().email().transform((value) => value.toLowerCase()),
     PRODUCTION_ADMIN_PASSWORD: z.string().min(14).max(128)
       .regex(/[a-z]/, 'Admin password needs a lowercase letter')
@@ -44,7 +43,7 @@ async function main() {
 
     const admin = await tx.user.create({
       data: {
-        name: input.PRODUCTION_ADMIN_NAME,
+        name: 'Admin',
         email: input.PRODUCTION_ADMIN_EMAIL,
         role: Role.ADMIN,
         status: 'ACTIVE',

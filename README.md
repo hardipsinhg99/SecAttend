@@ -26,7 +26,7 @@ SHREEDEVI SECURITY SERVICE is a production-oriented attendance and payroll works
    docker compose up --build
    ```
 
-3. Create the local administrator once after setting `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in `.env`:
+3. Create the local administrator once after setting `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`:
 
    ```bash
    docker compose exec api node apps/api/dist/prisma/seed.js
@@ -99,12 +99,11 @@ For an existing database originally created with `prisma db push`, the supplied 
 
 ## One-time Render production reset
 
-The production entrypoint includes an idempotent, guarded reset. It permanently deletes all operational data and creates exactly one administrator only when all five environment variables below are present:
+The production entrypoint includes an idempotent, guarded reset. It permanently deletes all operational data and creates exactly one administrator named `Admin` only when all four environment variables below are present:
 
 ```env
 PRODUCTION_RESET_ID=fresh-production-2026-07-23-v1
 CONFIRM_PRODUCTION_RESET=DELETE_ALL_SHREEDEVI_DATA
-PRODUCTION_ADMIN_NAME=SHREEDEVI Administrator
 PRODUCTION_ADMIN_EMAIL=admin@your-company-domain.com
 PRODUCTION_ADMIN_PASSWORD=use-a-unique-14+-character-strong-password
 ```
