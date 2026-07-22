@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, FileBarChart, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
+import { Download, FileBarChart, MapPin, ShieldAlert, TrendingUp, WalletCards } from 'lucide-react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { api, currency, downloadFile } from '../lib/api';
 import { EmptyState, LoadingState, PageHeader, Toast } from '../components/ui';
+import type { Location } from '../types';
 
 type Compliance = { id: string; name: string; locations: string[]; expected: number; marked: number; compliance: number };
-type Summary = { attendance: { present: number; leave: number; marked: number; activeGuards: number }; payroll: { guardNet: number; companyNet: number; margin: number } };
+type Summary = { attendance: { present: number; absent: number; leave: number; marked: number; activeGuards: number }; payroll: { guardNet: number; companyNet: number; margin: number } };
 
 export function ReportsPage() {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -14,6 +15,9 @@ export function ReportsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationId, setLocationId] = useState('');
+  useEffect(() => { api<{ data: Location[] }>('/locations').then((result) => { setLocations(result.data); setLocationId((current) => current || result.data[0]?.id || ''); }); }, []);
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -35,9 +39,14 @@ export function ReportsPage() {
     try { await downloadFile(`/reports/attendance/export?from=${from}&to=${to}`, `attendance-${month}.xlsx`); }
     catch (err) { setToast(err instanceof Error ? err.message : 'Export failed'); }
   }
-  return <div className="page"><PageHeader eyebrow="Live insights & governance" title="Reports" description="Attendance, compliance, and payroll metrics calculated directly from current records." actions={<button className="button button--primary" onClick={exportAttendance}><Download size={17} />Export attendance</button>} />
-    <section className="report-controls"><label>Reporting month<input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label><div className="report-score"><span><TrendingUp size={18} />Weighted compliance</span><strong>{average}%</strong></div></section>
-    <section className="report-metrics"><article><span>Present records</span><strong>{summary?.attendance.present ?? 0}</strong><p>Daily guard attendance</p></article><article><span>Leave records</span><strong>{summary?.attendance.leave ?? 0}</strong><p>Driving salary deductions</p></article><article><span>Guard net payroll</span><strong>{currency(summary?.payroll.guardNet ?? 0)}</strong><p>Live payable amount</p></article><article><span>Company net billing</span><strong>{currency(summary?.payroll.companyNet ?? 0)}</strong><p>Live invoice value</p></article></section>
+  async function exportSiteRegister() {
+    if (!locationId) return;
+    try { await downloadFile(`/reports/site-attendance/export?month=${month}&locationId=${encodeURIComponent(locationId)}`, `site-attendance-${month}.xlsx`); }
+    catch (err) { setToast(err instanceof Error ? err.message : 'Site register export failed'); }
+  }
+  return <div className="page"><PageHeader eyebrow="Live insights & governance" title="Reports" description="Attendance, compliance, and payroll metrics calculated directly from current records." actions={<><button className="button button--secondary" onClick={exportSiteRegister} disabled={!locationId}><FileBarChart size={17} />Site register</button><button className="button button--primary" onClick={exportAttendance}><Download size={17} />Export attendance</button></>} />
+    <section className="report-controls"><label>Reporting month<input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label><label>Site location<span className="select-with-icon"><MapPin size={16} /><select value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Select location</option>{locations.map((location) => <option value={location.id} key={location.id}>{location.name}</option>)}</select></span></label><div className="report-score"><span><TrendingUp size={18} />Weighted compliance</span><strong>{average}%</strong></div></section>
+    <section className="report-metrics"><article><span>Present records</span><strong>{summary?.attendance.present ?? 0}</strong><p>Daily guard attendance</p></article><article><span>Absent / leave</span><strong>{(summary?.attendance.absent ?? 0) + (summary?.attendance.leave ?? 0)}</strong><p>Unpaid attendance records</p></article><article><span>Guard net payroll</span><strong>{currency(summary?.payroll.guardNet ?? 0)}</strong><p>Joining-date adjusted payable</p></article><article><span>Company net billing</span><strong>{currency(summary?.payroll.companyNet ?? 0)}</strong><p>Live invoice value</p></article></section>
     <section className="panel compliance-panel"><div className="panel__header"><div><p className="eyebrow">Manager compliance</p><h2>Assigned-location completion</h2></div><ShieldAlert size={21} /></div>{loading ? <LoadingState /> : !data.length ? <EmptyState icon={<FileBarChart />} title="No report data" description="Compliance results will appear as managers mark attendance." /> : <div className="compliance-list">{data.map((row) => <article key={row.id}><div><strong>{row.name}</strong><span>{row.locations.join(' · ') || 'No assigned locations'}</span></div><div className="compliance-bar"><i><b style={{ width: `${Math.min(100, row.compliance)}%` }} /></i><span>{row.marked} / {row.expected} records</span></div><strong className={row.compliance < 80 ? 'low' : row.compliance < 95 ? 'medium' : 'high'}>{row.compliance}%</strong></article>)}</div>}</section>
     <section className="report-cards"><article><FileBarChart /><div><strong>Attendance register</strong><p>Daily status, employee IDs, locations and marking timestamps.</p></div><button onClick={exportAttendance}>Export XLSX</button></article><article><WalletCards /><div><strong>Payroll detail</strong><p>Dual salaries, leave deductions, net billing and guard pay.</p></div><Link to="/payroll">Open payroll</Link></article></section>
     {toast && <Toast type="error" message={toast} onClose={() => setToast('')} />}

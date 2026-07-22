@@ -17,7 +17,7 @@ Each guard can have only one status per date. A save uses a database transaction
 
 ## Payroll consistency
 
-The daily rate is monthly salary divided by calendar days in the selected month. Every on-leave record deducts one daily rate. Calculations are rounded to two decimal places and persisted as a monthly snapshot. Re-running a month updates the same records, so the operation is idempotent.
+The daily rate is monthly salary divided by calendar days in the selected month. Days before a guard's joining date and explicitly marked absent or on leave each deduct one daily rate. Unmarked eligible days remain visible as incomplete attendance instead of silently becoming payroll deductions. The same eligibility logic powers calendar, dashboard, compliance, payroll, and site-register reports. Calculations are rounded to two decimal places and persisted as an idempotent monthly snapshot.
 
 ## Scaling path
 

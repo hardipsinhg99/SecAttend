@@ -19,7 +19,19 @@ enum AccountStatus {
 
 enum AttendanceStatus {
   PRESENT
+  ABSENT
   ON_LEAVE
+}
+
+enum ShiftType {
+  DAY
+  NIGHT
+  ROTATING
+}
+
+enum GuardDesignation {
+  SECURITY_GUARD
+  SUPERVISOR
 }
 
 model User {
@@ -43,19 +55,30 @@ model Location {
   id        String   @id @default(cuid())
   name      String   @unique
   address   String?
+  clientName String?
+  status    AccountStatus @default(ACTIVE)
   guards    Guard[]
   managers  User[]   @relation("ManagerLocations")
   createdAt DateTime @default(now())
+
+  @@index([status, name])
 }
 
 model Guard {
   id            String        @id @default(cuid())
   name          String
   employeeId    String        @unique
-  phone         String
+  phone         String?
   email         String?
-  address       String
+  address       String?
   photoUrl      String?
+  joiningDate   DateTime?     @db.Date
+  project       String?
+  village       String?
+  shiftType     ShiftType?
+  postDetail    String?
+  designation   GuardDesignation @default(SECURITY_GUARD)
+  provisionalEmployeeId Boolean  @default(false)
   guardMonthlySalary   Decimal       @map("monthlySalary") @db.Decimal(12, 2)
   companyMonthlySalary Decimal       @default(0) @db.Decimal(12, 2)
   status        AccountStatus @default(ACTIVE)
@@ -68,6 +91,7 @@ model Guard {
 
   @@index([locationId, status])
   @@index([name])
+  @@index([shiftType])
 }
 
 model Attendance {
@@ -92,6 +116,9 @@ model SalaryRecord {
   guard         Guard    @relation(fields: [guardId], references: [id], onDelete: Cascade)
   monthYear     DateTime  @db.Date
   totalDays     Int
+  eligibleDays Int      @default(0)
+  presentDays  Int      @default(0)
+  absentDays   Int      @default(0)
   leaveDays     Int
   guardDailyRate       Decimal  @map("dailyRate") @db.Decimal(12, 2)
   guardGrossSalary     Decimal  @map("grossSalary") @db.Decimal(12, 2)

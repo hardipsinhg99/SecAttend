@@ -6,11 +6,12 @@ SecAttend is a production-oriented attendance and payroll workspace for security
 
 - Role-based admin and manager workspaces
 - Guard CRUD, status filtering, location assignment, and Excel bulk import
+- Dynamic location and address directory with guarded activation/deactivation
 - Manager CRUD with multi-location access control
 - Monthly attendance calendar with complete/partial/unmarked states
-- Present/on-leave marking, bulk present action, and configurable 48-hour lock
-- Separate company-billing and guard in-hand salaries with live per-day leave deductions
-- Manager compliance reporting and Excel attendance export
+- Present/absent/on-leave marking, bulk present action, joining-date eligibility, and configurable 48-hour lock
+- Separate company-billing and guard in-hand salaries with live absence, leave, and joining-date deductions
+- Dynamic manager compliance reporting plus general and site-register Excel exports
 - JWT authentication, bcrypt password hashing, rate-limited login, Helmet, Zod validation, and audit logs
 - PostgreSQL schema designed for indexed location/date queries
 - Multi-stage Docker images and Nginx reverse proxy
@@ -65,9 +66,11 @@ The frontend runs on port 5173 and proxies `/api` to the backend on port 4000.
 
 ## Excel import format
 
-The first worksheet must contain these exact headers:
+The first worksheet must contain these headers:
 
-`Name`, `EmployeeID`, `Phone`, `Email`, `Address`, `Location`, `GuardMonthlySalary`, `CompanyMonthlySalary`
+Required: `Name`, `Location`, and either `GuardMonthlySalary` or the legacy `MonthlySalary`.
+
+Supported optional columns: `EmployeeID` (blank or `NEW` creates a provisional code), `Phone`, `Email`, `Address`, `CompanyMonthlySalary`, `DateOfJoining`, `Project`, `Village`, `Shift` (`DAY`, `NIGHT`, or `ROTATING`), `PostDetail`, and `Designation` (`SECURITY_GUARD` or `SUPERVISOR`).
 
 Location names must already exist in SecAttend. Imports are capped at 1,000 rows and 5 MB; invalid rows are skipped and returned with row-specific errors.
 
@@ -80,8 +83,9 @@ Location names must already exist in SecAttend. Imports are capped at 1,000 rows
 - `GET /api/attendance/calendar/summary`
 - `GET|POST /api/attendance/:date`
 - `GET /api/salary/:month`, `GET /api/salary/:month/export`, `POST /api/salary/calculate/:month`
-- `GET /api/reports/attendance`, `/attendance/export`, `/compliance`
-- `GET /api/dashboard`, `/api/locations`, `/api/health`
+- `GET /api/reports/attendance`, `/attendance/export`, `/site-attendance/export`, `/compliance`
+- `GET /api/dashboard`, `/api/health`
+- `GET|POST|PATCH|DELETE /api/locations`, `POST /api/locations/:id/activate`
 
 ## Architecture notes
 

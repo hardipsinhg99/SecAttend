@@ -1,0 +1,25 @@
+ALTER TYPE "AttendanceStatus" ADD VALUE 'ABSENT';
+
+CREATE TYPE "ShiftType" AS ENUM ('DAY', 'NIGHT', 'ROTATING');
+CREATE TYPE "GuardDesignation" AS ENUM ('SECURITY_GUARD', 'SUPERVISOR');
+
+ALTER TABLE "Guard"
+ADD COLUMN "joiningDate" DATE,
+ADD COLUMN "project" TEXT,
+ADD COLUMN "village" TEXT,
+ADD COLUMN "shiftType" "ShiftType",
+ADD COLUMN "postDetail" TEXT,
+ADD COLUMN "designation" "GuardDesignation" NOT NULL DEFAULT 'SECURITY_GUARD',
+ADD COLUMN "provisionalEmployeeId" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "Guard" ALTER COLUMN "phone" DROP NOT NULL;
+ALTER TABLE "Guard" ALTER COLUMN "address" DROP NOT NULL;
+
+ALTER TABLE "Location" ADD COLUMN "clientName" TEXT;
+
+CREATE INDEX "Guard_shiftType_idx" ON "Guard"("shiftType");
+
+ALTER TABLE "SalaryRecord"
+ADD COLUMN "eligibleDays" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "presentDays" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "absentDays" INTEGER NOT NULL DEFAULT 0;

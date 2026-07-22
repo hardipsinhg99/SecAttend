@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { ZodError } from 'zod';
+import { Prisma } from '@prisma/client';
 
 export class AppError extends Error {
   constructor(public status: number, message: string, public details?: unknown) {
@@ -20,6 +21,9 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
   }
   if (error instanceof AppError) {
     return res.status(error.status).json({ error: error.message, details: error.details });
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    return res.status(409).json({ error: 'A record with this unique value already exists' });
   }
   const message = error instanceof Error ? error.message : 'Unexpected server error';
   if (process.env.NODE_ENV !== 'production') return res.status(500).json({ error: message });

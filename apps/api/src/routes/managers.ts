@@ -30,6 +30,8 @@ managersRouter.get('/', asyncHandler(async (req, res) => {
 
 managersRouter.post('/', asyncHandler(async (req, res) => {
   const input = managerInput.extend({ password: z.string().min(8) }).parse(req.body);
+  const locationCount = await prisma.location.count({ where: { id: { in: [...new Set(input.locationIds)] }, status: 'ACTIVE' } });
+  if (locationCount !== new Set(input.locationIds).size) throw new AppError(422, 'One or more selected locations are unavailable');
   const user = await prisma.user.create({ data: {
     name: input.name, email: input.email.toLowerCase(), phone: input.phone, role: 'MANAGER', status: input.status,
     passwordHash: await bcrypt.hash(input.password, 12), locations: { connect: input.locationIds.map((id) => ({ id })) },
@@ -42,6 +44,10 @@ managersRouter.patch('/:id', asyncHandler(async (req, res) => {
   const input = managerInput.partial().parse(req.body);
   const existing = await prisma.user.findFirst({ where: { id: String(req.params.id), role: 'MANAGER' } });
   if (!existing) throw new AppError(404, 'Manager not found');
+  if (input.locationIds) {
+    const locationCount = await prisma.location.count({ where: { id: { in: [...new Set(input.locationIds)] }, status: 'ACTIVE' } });
+    if (locationCount !== new Set(input.locationIds).size) throw new AppError(422, 'One or more selected locations are unavailable');
+  }
   const user = await prisma.user.update({ where: { id: existing.id }, data: {
     name: input.name, email: input.email?.toLowerCase(), phone: input.phone, status: input.status,
     ...(input.password && { passwordHash: await bcrypt.hash(input.password, 12) }),

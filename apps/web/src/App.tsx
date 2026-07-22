@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const GuardsPage = lazy(() => import('./pages/GuardsPage').then((module) => ({ default: module.GuardsPage })));
 const ManagersPage = lazy(() => import('./pages/ManagersPage').then((module) => ({ default: module.ManagersPage })));
+const LocationsPage = lazy(() => import('./pages/LocationsPage').then((module) => ({ default: module.LocationsPage })));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then((module) => ({ default: module.AttendancePage })));
 const PayrollPage = lazy(() => import('./pages/PayrollPage').then((module) => ({ default: module.PayrollPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
@@ -21,6 +22,7 @@ export default function App() {
     <Route path="/attendance" element={<AttendancePage />} />
     {user.role === 'ADMIN' && <>
       <Route path="/managers" element={<ManagersPage />} />
+      <Route path="/locations" element={<LocationsPage />} />
       <Route path="/payroll" element={<PayrollPage />} />
       <Route path="/reports" element={<ReportsPage />} />
     </>}

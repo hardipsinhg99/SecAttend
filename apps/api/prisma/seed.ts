@@ -8,7 +8,7 @@ async function main() {
     ['Harbor Point', 'Bandra Kurla Complex, Mumbai'],
     ['Orchid Tech Park', 'Goregaon East, Mumbai'],
     ['Meridian Hospital', 'Andheri West, Mumbai'],
-  ] as const).map(([name, address]) => prisma.location.upsert({ where: { name }, update: { address }, create: { name, address } })));
+  ] as const).map(([name, address]) => prisma.location.upsert({ where: { name }, update: { address, status: 'ACTIVE' }, create: { name, address } })));
   const passwordHash = await bcrypt.hash('Secure@123', 12);
   const admin = await prisma.user.upsert({ where: { email: 'admin@secattend.local' }, update: {}, create: { name: 'Aarav Mehta', email: 'admin@secattend.local', phone: '+91 98765 01001', role: Role.ADMIN, passwordHash } });
   const manager = await prisma.user.upsert({ where: { email: 'manager@secattend.local' }, update: { locations: { set: locations.slice(0, 2).map(({ id }) => ({ id })) } }, create: { name: 'Priya Sharma', email: 'manager@secattend.local', phone: '+91 98765 01002', role: Role.MANAGER, passwordHash, locations: { connect: locations.slice(0, 2).map(({ id }) => ({ id })) } } });
