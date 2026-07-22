@@ -1,6 +1,6 @@
-# SecAttend
+# SHREEDEVI SECURITY SERVICE
 
-SecAttend is a production-oriented attendance and payroll workspace for security agencies. It gives administrators a complete workforce view and gives field managers a fast, touch-friendly daily attendance workflow.
+SHREEDEVI SECURITY SERVICE is a production-oriented attendance and payroll workspace for security operations. It gives administrators a complete workforce view and gives field managers a fast, touch-friendly daily attendance workflow.
 
 ## Included
 
@@ -9,8 +9,9 @@ SecAttend is a production-oriented attendance and payroll workspace for security
 - Dynamic location and address directory with guarded activation/deactivation
 - Manager CRUD with multi-location access control
 - Monthly attendance calendar with complete/partial/unmarked states
-- Present/absent/on-leave marking, bulk present action, joining-date eligibility, and configurable 48-hour lock
-- Separate company-billing and guard in-hand salaries with live absence, leave, and joining-date deductions
+- Present/absent marking, bulk present action, joining-date eligibility, and always-open historical editing
+- Separate company-billing and guard in-hand salaries with live absence and joining-date deductions
+- Manual monthly paid/unpaid guard payment tracking with an audit trail
 - Dynamic manager compliance reporting plus general and site-register Excel exports
 - JWT authentication, bcrypt password hashing, rate-limited login, Helmet, Zod validation, and audit logs
 - PostgreSQL schema designed for indexed location/date queries
@@ -72,7 +73,7 @@ Required: `Name`, `Location`, and either `GuardMonthlySalary` or the legacy `Mon
 
 Supported optional columns: `EmployeeID` (blank or `NEW` creates a provisional code), `Phone`, `Email`, `Address`, `CompanyMonthlySalary`, `DateOfJoining`, `Project`, `Village`, `Shift` (`DAY`, `NIGHT`, or `ROTATING`), `PostDetail`, and `Designation` (`SECURITY_GUARD` or `SUPERVISOR`).
 
-Location names must already exist in SecAttend. Imports are capped at 1,000 rows and 5 MB; invalid rows are skipped and returned with row-specific errors.
+Location names must already exist in SHREEDEVI SECURITY SERVICE. Imports are capped at 1,000 rows and 5 MB; invalid rows are skipped and returned with row-specific errors.
 
 ## API surface
 
@@ -82,7 +83,7 @@ Location names must already exist in SecAttend. Imports are capped at 1,000 rows
 - `GET|POST|PATCH|DELETE /api/managers`
 - `GET /api/attendance/calendar/summary`
 - `GET|POST /api/attendance/:date`
-- `GET /api/salary/:month`, `GET /api/salary/:month/export`, `POST /api/salary/calculate/:month`
+- `GET /api/salary/:month`, `GET /api/salary/:month/export`, `POST /api/salary/calculate/:month`, `PATCH /api/salary/:month/:guardId/payment`
 - `GET /api/reports/attendance`, `/attendance/export`, `/site-attendance/export`, `/compliance`
 - `GET /api/dashboard`, `/api/health`
 - `GET|POST|PATCH|DELETE /api/locations`, `POST /api/locations/:id/activate`

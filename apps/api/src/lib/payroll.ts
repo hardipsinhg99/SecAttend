@@ -14,7 +14,7 @@ function money(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export type PayrollGuard = Guard & { location: Location; attendance: { date: Date; status: 'PRESENT' | 'ABSENT' | 'ON_LEAVE' }[] };
+export type PayrollGuard = Guard & { location: Location; attendance: { date: Date; status: 'PRESENT' | 'ABSENT' }[] };
 
 export function calculatePayrollRow(guard: PayrollGuard, month: string, start: Date, totalDays: number) {
   const monthEnd = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), totalDays));
@@ -26,8 +26,7 @@ export function calculatePayrollRow(guard: PayrollGuard, month: string, start: D
   const eligibleAttendance = guard.attendance.filter((record) => !joiningDate || record.date >= joiningDate);
   const presentDays = eligibleAttendance.filter((record) => record.status === 'PRESENT').length;
   const absentDays = eligibleAttendance.filter((record) => record.status === 'ABSENT').length;
-  const leaveDays = eligibleAttendance.filter((record) => record.status === 'ON_LEAVE').length;
-  const unpaidDays = absentDays + leaveDays;
+  const unpaidDays = absentDays;
   const payableDays = Math.max(0, eligibleDays - unpaidDays);
   const guardGrossSalary = Number(guard.guardMonthlySalary);
   const companyGrossSalary = Number(guard.companyMonthlySalary);
@@ -42,7 +41,6 @@ export function calculatePayrollRow(guard: PayrollGuard, month: string, start: D
     payableDays,
     presentDays,
     absentDays,
-    leaveDays,
     guardDailyRate,
     guardGrossSalary,
     guardDeductions,
@@ -57,12 +55,24 @@ export function calculatePayrollRow(guard: PayrollGuard, month: string, start: D
 
 export async function getLivePayroll(month: string) {
   const { start, end, totalDays } = payrollPeriod(month);
-  const guards = await prisma.guard.findMany({
-    where: { status: 'ACTIVE' },
-    include: { location: true, attendance: { where: { date: { gte: start, lt: end } }, select: { date: true, status: true } } },
-    orderBy: { name: 'asc' },
+  const [guards, payments] = await Promise.all([
+    prisma.guard.findMany({
+      where: { status: 'ACTIVE' },
+      include: { location: true, attendance: { where: { date: { gte: start, lt: end } }, select: { date: true, status: true } } },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.payrollPayment.findMany({ where: { monthYear: start } }),
+  ]);
+  const paymentByGuard = new Map(payments.map((payment) => [payment.guardId, payment]));
+  const data = guards.map((guard) => {
+    const payment = paymentByGuard.get(guard.id);
+    return {
+      ...calculatePayrollRow(guard, month, start, totalDays),
+      paymentStatus: payment?.status ?? 'UNPAID' as const,
+      paidAt: payment?.paidAt ?? null,
+      paymentNote: payment?.note ?? null,
+    };
   });
-  const data = guards.map((guard) => calculatePayrollRow(guard, month, start, totalDays));
   const totals = data.reduce((sum, row) => ({
     guardGross: money(sum.guardGross + row.guardGrossSalary),
     guardDeductions: money(sum.guardDeductions + row.guardDeductions),

@@ -15,7 +15,7 @@ export function LoadingState({ label = 'Loading information' }: { label?: string
 
 export function Modal({ open, title, description, onClose, children, size = 'md' }: { open: boolean; title: string; description?: string; onClose: () => void; children: ReactNode; size?: 'md' | 'lg' }) {
   if (!open) return null;
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className={`modal modal--${size}`} role="dialog" aria-modal="true" aria-labelledby="modal-title"><header><div><p className="eyebrow">SecAttend workspace</p><h2 id="modal-title">{title}</h2>{description && <p>{description}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></header>{children}</section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className={`modal modal--${size}`} role="dialog" aria-modal="true" aria-labelledby="modal-title"><header><div><p className="eyebrow">SHREEDEVI SECURITY SERVICE</p><h2 id="modal-title">{title}</h2>{description && <p>{description}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></header>{children}</section></div>;
 }
 
 export function Toast({ type = 'success', message, onClose }: { type?: 'success' | 'error'; message: string; onClose: () => void }) {

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import * as XLSX from 'xlsx';
+import { z } from 'zod';
 import { audit } from '../lib/audit.js';
 import { asyncHandler } from '../lib/http.js';
 import { getLivePayroll, payrollPeriod } from '../lib/payroll.js';
@@ -25,7 +26,9 @@ salaryRouter.get('/:month/export', asyncHandler(async (req, res) => {
     EligibleDays: row.eligibleDays,
     PresentDays: row.presentDays,
     AbsentDays: row.absentDays,
-    LeaveDays: row.leaveDays,
+    PaymentStatus: row.paymentStatus,
+    PaidAt: row.paidAt?.toISOString() ?? '',
+    PaymentNote: row.paymentNote ?? '',
     GuardMonthlySalary: row.guardGrossSalary,
     GuardLeaveDeduction: row.guardDeductions,
     GuardNetPayable: row.guardNetSalary,
@@ -49,18 +52,34 @@ salaryRouter.post('/calculate/:month', asyncHandler(async (req, res) => {
   const records = await prisma.$transaction(payroll.data.map((row) => prisma.salaryRecord.upsert({
     where: { guardId_monthYear: { guardId: row.guard.id, monthYear: start } },
     create: {
-      guardId: row.guard.id, monthYear: start, totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: row.leaveDays,
+      guardId: row.guard.id, monthYear: start, totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: 0,
       guardDailyRate: new Prisma.Decimal(row.guardDailyRate), guardGrossSalary: new Prisma.Decimal(row.guardGrossSalary), guardDeductions: new Prisma.Decimal(row.guardDeductions), guardNetSalary: new Prisma.Decimal(row.guardNetSalary),
       companyDailyRate: new Prisma.Decimal(row.companyDailyRate), companyGrossSalary: new Prisma.Decimal(row.companyGrossSalary), companyDeductions: new Prisma.Decimal(row.companyDeductions), companyNetSalary: new Prisma.Decimal(row.companyNetSalary),
     },
     update: {
-      totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: row.leaveDays,
+      totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: 0,
       guardDailyRate: new Prisma.Decimal(row.guardDailyRate), guardGrossSalary: new Prisma.Decimal(row.guardGrossSalary), guardDeductions: new Prisma.Decimal(row.guardDeductions), guardNetSalary: new Prisma.Decimal(row.guardNetSalary),
       companyDailyRate: new Prisma.Decimal(row.companyDailyRate), companyGrossSalary: new Prisma.Decimal(row.companyGrossSalary), companyDeductions: new Prisma.Decimal(row.companyDeductions), companyNetSalary: new Prisma.Decimal(row.companyNetSalary), generatedAt: new Date(),
     },
   })));
   await audit(req, 'FINALIZE', 'SalaryRecord', month, { records: records.length });
   res.json({ month, generated: records.length });
+}));
+
+salaryRouter.patch('/:month/:guardId/payment', asyncHandler(async (req, res) => {
+  const { start } = payrollPeriod(String(req.params.month));
+  const guardId = String(req.params.guardId);
+  const input = z.object({ status: z.enum(['PAID', 'UNPAID']), note: z.string().trim().max(300).optional().or(z.literal('')) }).parse(req.body);
+  const guard = await prisma.guard.findUnique({ where: { id: guardId }, select: { id: true, name: true } });
+  if (!guard) return res.status(404).json({ message: 'Guard not found' });
+  const paidAt = input.status === 'PAID' ? new Date() : null;
+  const payment = await prisma.payrollPayment.upsert({
+    where: { guardId_monthYear: { guardId, monthYear: start } },
+    create: { guardId, monthYear: start, status: input.status, paidAt, note: input.note || null, updatedById: req.user!.id },
+    update: { status: input.status, paidAt, note: input.note || null, updatedById: req.user!.id },
+  });
+  await audit(req, 'UPDATE_PAYMENT_STATUS', 'PayrollPayment', payment.id, { guardId, guard: guard.name, month: req.params.month, status: input.status });
+  res.json({ data: payment });
 }));
 
 salaryRouter.get('/:month', asyncHandler(async (req, res) => {

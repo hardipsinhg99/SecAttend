@@ -13,11 +13,11 @@ JWTs carry identity and role, but every authenticated request also verifies that
 
 ## Attendance consistency
 
-Each guard can have only one status per date. A save uses a database transaction and upserts the complete submitted set. Future dates are rejected. Historical edits are rejected after `ATTENDANCE_EDIT_HOURS`; each successful save creates an audit event with actor, timestamp, IP address, and record count.
+Each guard can have only one present or absent status per date. A save uses a database transaction and upserts the complete submitted set. Future dates are rejected, while historical dates remain editable. Each successful save creates an audit event with actor, timestamp, IP address, and record count.
 
 ## Payroll consistency
 
-The daily rate is monthly salary divided by calendar days in the selected month. Days before a guard's joining date and explicitly marked absent or on leave each deduct one daily rate. Unmarked eligible days remain visible as incomplete attendance instead of silently becoming payroll deductions. The same eligibility logic powers calendar, dashboard, compliance, payroll, and site-register reports. Calculations are rounded to two decimal places and persisted as an idempotent monthly snapshot.
+The daily rate is monthly salary divided by calendar days in the selected month. Days before a guard's joining date and explicitly marked absent each deduct one daily rate. Unmarked eligible days remain visible as incomplete attendance instead of silently becoming payroll deductions. The same eligibility logic powers calendar, dashboard, compliance, payroll, and site-register reports. Calculations are rounded to two decimal places and persisted as an idempotent monthly snapshot. Paid/unpaid state is maintained separately per guard and month so live recalculation never erases manual payment tracking.
 
 ## Scaling path
 

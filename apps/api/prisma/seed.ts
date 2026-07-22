@@ -24,7 +24,7 @@ async function main() {
     const date = new Date(today); date.setUTCDate(date.getUTCDate() - offset);
     for (const [index, guard] of guards.entries()) {
       if (offset === 0 && index > 8) continue;
-      await prisma.attendance.upsert({ where: { guardId_date: { guardId: guard.id, date } }, update: {}, create: { guardId: guard.id, date, status: (index + offset) % 11 === 0 ? 'ON_LEAVE' : 'PRESENT', markedById: manager.id } });
+      await prisma.attendance.upsert({ where: { guardId_date: { guardId: guard.id, date } }, update: {}, create: { guardId: guard.id, date, status: (index + offset) % 11 === 0 ? 'ABSENT' : 'PRESENT', markedById: manager.id } });
     }
   }
   const auditCount = await prisma.auditLog.count();

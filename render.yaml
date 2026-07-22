@@ -23,8 +23,6 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 8h
-      - key: ATTENDANCE_EDIT_HOURS
-        value: "48"
       - key: WEB_ORIGIN
         value: https://secattend-web.onrender.com
     buildFilter:

@@ -20,7 +20,11 @@ enum AccountStatus {
 enum AttendanceStatus {
   PRESENT
   ABSENT
-  ON_LEAVE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
 }
 
 enum ShiftType {
@@ -35,59 +39,61 @@ enum GuardDesignation {
 }
 
 model User {
-  id               String       @id @default(cuid())
+  id               String           @id @default(cuid())
   name             String
-  email            String       @unique
+  email            String           @unique
   phone            String?
   role             Role
   passwordHash     String
-  status           AccountStatus @default(ACTIVE)
-  locations        Location[]   @relation("ManagerLocations")
-  attendanceMarked Attendance[] @relation("AttendanceMarker")
-  auditLogs         AuditLog[]  @relation("AuditActor")
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  status           AccountStatus    @default(ACTIVE)
+  locations        Location[]       @relation("ManagerLocations")
+  attendanceMarked Attendance[]     @relation("AttendanceMarker")
+  auditLogs        AuditLog[]       @relation("AuditActor")
+  payrollPayments  PayrollPayment[] @relation("PayrollPaymentUpdater")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@index([role, status])
 }
 
 model Location {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  address   String?
+  id         String        @id @default(cuid())
+  name       String        @unique
+  address    String?
   clientName String?
-  status    AccountStatus @default(ACTIVE)
-  guards    Guard[]
-  managers  User[]   @relation("ManagerLocations")
-  createdAt DateTime @default(now())
+  status     AccountStatus @default(ACTIVE)
+  guards     Guard[]
+  managers   User[]        @relation("ManagerLocations")
+  createdAt  DateTime      @default(now())
 
   @@index([status, name])
 }
 
 model Guard {
-  id            String        @id @default(cuid())
-  name          String
-  employeeId    String        @unique
-  phone         String?
-  email         String?
-  address       String?
-  photoUrl      String?
-  joiningDate   DateTime?     @db.Date
-  project       String?
-  village       String?
-  shiftType     ShiftType?
-  postDetail    String?
-  designation   GuardDesignation @default(SECURITY_GUARD)
-  provisionalEmployeeId Boolean  @default(false)
-  guardMonthlySalary   Decimal       @map("monthlySalary") @db.Decimal(12, 2)
-  companyMonthlySalary Decimal       @default(0) @db.Decimal(12, 2)
-  status        AccountStatus @default(ACTIVE)
-  locationId    String
-  location      Location      @relation(fields: [locationId], references: [id])
-  attendance    Attendance[]
-  salaryRecords SalaryRecord[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                    String           @id @default(cuid())
+  name                  String
+  employeeId            String           @unique
+  phone                 String?
+  email                 String?
+  address               String?
+  photoUrl              String?
+  joiningDate           DateTime?        @db.Date
+  project               String?
+  village               String?
+  shiftType             ShiftType?
+  postDetail            String?
+  designation           GuardDesignation @default(SECURITY_GUARD)
+  provisionalEmployeeId Boolean          @default(false)
+  guardMonthlySalary    Decimal          @map("monthlySalary") @db.Decimal(12, 2)
+  companyMonthlySalary  Decimal          @default(0) @db.Decimal(12, 2)
+  status                AccountStatus    @default(ACTIVE)
+  locationId            String
+  location              Location         @relation(fields: [locationId], references: [id])
+  attendance            Attendance[]
+  salaryRecords         SalaryRecord[]
+  payrollPayments       PayrollPayment[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
   @@index([locationId, status])
   @@index([name])
@@ -111,39 +117,56 @@ model Attendance {
 }
 
 model SalaryRecord {
-  id            String   @id @default(cuid())
-  guardId       String
-  guard         Guard    @relation(fields: [guardId], references: [id], onDelete: Cascade)
-  monthYear     DateTime  @db.Date
-  totalDays     Int
-  eligibleDays Int      @default(0)
-  presentDays  Int      @default(0)
-  absentDays   Int      @default(0)
-  leaveDays     Int
-  guardDailyRate       Decimal  @map("dailyRate") @db.Decimal(12, 2)
-  guardGrossSalary     Decimal  @map("grossSalary") @db.Decimal(12, 2)
-  guardDeductions      Decimal  @map("deductions") @db.Decimal(12, 2)
-  guardNetSalary       Decimal  @map("netSalary") @db.Decimal(12, 2)
-  companyDailyRate     Decimal  @default(0) @db.Decimal(12, 2)
-  companyGrossSalary   Decimal  @default(0) @db.Decimal(12, 2)
-  companyDeductions    Decimal  @default(0) @db.Decimal(12, 2)
-  companyNetSalary     Decimal  @default(0) @db.Decimal(12, 2)
-  generatedAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  guardId            String
+  guard              Guard    @relation(fields: [guardId], references: [id], onDelete: Cascade)
+  monthYear          DateTime @db.Date
+  totalDays          Int
+  eligibleDays       Int      @default(0)
+  presentDays        Int      @default(0)
+  absentDays         Int      @default(0)
+  leaveDays          Int
+  guardDailyRate     Decimal  @map("dailyRate") @db.Decimal(12, 2)
+  guardGrossSalary   Decimal  @map("grossSalary") @db.Decimal(12, 2)
+  guardDeductions    Decimal  @map("deductions") @db.Decimal(12, 2)
+  guardNetSalary     Decimal  @map("netSalary") @db.Decimal(12, 2)
+  companyDailyRate   Decimal  @default(0) @db.Decimal(12, 2)
+  companyGrossSalary Decimal  @default(0) @db.Decimal(12, 2)
+  companyDeductions  Decimal  @default(0) @db.Decimal(12, 2)
+  companyNetSalary   Decimal  @default(0) @db.Decimal(12, 2)
+  generatedAt        DateTime @default(now())
 
   @@unique([guardId, monthYear])
   @@index([monthYear])
 }
 
+model PayrollPayment {
+  id          String        @id @default(cuid())
+  guardId     String
+  guard       Guard         @relation(fields: [guardId], references: [id], onDelete: Cascade)
+  monthYear   DateTime      @db.Date
+  status      PaymentStatus @default(UNPAID)
+  paidAt      DateTime?
+  note        String?
+  updatedById String?
+  updatedBy   User?         @relation("PayrollPaymentUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([guardId, monthYear])
+  @@index([monthYear, status])
+}
+
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String?
-  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
-  action     String
-  entity     String
-  entityId   String?
-  metadata   Json?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
 
   @@index([entity, entityId])
   @@index([createdAt])

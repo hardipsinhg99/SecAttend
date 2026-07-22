@@ -42,7 +42,7 @@ reportsRouter.get('/site-attendance/export', asyncHandler(async (req, res) => {
     ['ATTENDANCE REGISTER'],
     [`SITE: ${location.name}`, location.address ?? ''],
     [`PRINCIPAL EMPLOYER / CLIENT: ${location.clientName ?? 'Not specified'}`],
-    ['Sr. No', 'EMP CODE', 'FULL NAME', 'DATE OF JOINING', 'MOBILE NO.', 'GUARD FIXED SALARY', 'COMPANY BILLING', 'PROJECT', 'VILLAGE', 'SHIFT', 'POST / LOCATION DETAIL', ...dayHeaders, 'ABSENT', 'LEAVE', 'PRESENT DAYS', 'GUARD PAYABLE', 'COMPANY PAYABLE'],
+    ['Sr. No', 'EMP CODE', 'FULL NAME', 'DATE OF JOINING', 'MOBILE NO.', 'GUARD FIXED SALARY', 'COMPANY BILLING', 'PROJECT', 'VILLAGE', 'SHIFT', 'POST / LOCATION DETAIL', ...dayHeaders, 'ABSENT', 'PRESENT DAYS', 'GUARD PAYABLE', 'COMPANY PAYABLE'],
   ];
   guards.forEach((guard, index) => {
     const attendance = new Map(guard.attendance.map((record) => [record.date.toISOString().slice(0, 10), record.status]));
@@ -50,14 +50,14 @@ reportsRouter.get('/site-attendance/export', asyncHandler(async (req, res) => {
       const date = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), day));
       if (guard.joiningDate && date < guard.joiningDate) return '';
       const status = attendance.get(date.toISOString().slice(0, 10));
-      return status === 'PRESENT' ? 'P' : status === 'ABSENT' ? 'A' : status === 'ON_LEAVE' ? 'L' : '';
+      return status === 'PRESENT' ? 'P' : status === 'ABSENT' ? 'A' : '';
     });
     const salary = payrollByGuard.get(guard.id);
-    rows.push([index + 1, guard.provisionalEmployeeId ? 'NEW' : guard.employeeId, guard.name, guard.joiningDate?.toISOString().slice(0, 10) ?? '', guard.phone ?? '', Number(guard.guardMonthlySalary), Number(guard.companyMonthlySalary), guard.project ?? '', guard.village ?? '', guard.shiftType ?? '', guard.postDetail ?? '', ...codes, salary?.absentDays ?? 0, salary?.leaveDays ?? 0, salary?.presentDays ?? 0, salary?.guardNetSalary ?? 0, salary?.companyNetSalary ?? 0]);
+    rows.push([index + 1, guard.provisionalEmployeeId ? 'NEW' : guard.employeeId, guard.name, guard.joiningDate?.toISOString().slice(0, 10) ?? '', guard.phone ?? '', Number(guard.guardMonthlySalary), Number(guard.companyMonthlySalary), guard.project ?? '', guard.village ?? '', guard.shiftType ?? '', guard.postDetail ?? '', ...codes, salary?.absentDays ?? 0, salary?.presentDays ?? 0, salary?.guardNetSalary ?? 0, salary?.companyNetSalary ?? 0]);
   });
   const sheet = XLSX.utils.aoa_to_sheet(rows);
-  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 10 + totalDays + 5 } }];
-  sheet['!cols'] = [{ wch: 7 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 24 }, ...dayHeaders.map(() => ({ wch: 4 })), { wch: 9 }, { wch: 8 }, { wch: 13 }, { wch: 16 }, { wch: 18 }];
+  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 14 + totalDays } }];
+  sheet['!cols'] = [{ wch: 7 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 24 }, ...dayHeaders.map(() => ({ wch: 4 })), { wch: 9 }, { wch: 13 }, { wch: 16 }, { wch: 18 }];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, month.toUpperCase());
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -98,7 +98,6 @@ reportsRouter.get('/summary', asyncHandler(async (req, res) => {
     prisma.guard.count({ where: { status: 'ACTIVE' } }),
   ]);
   const present = attendance.find((row) => row.status === 'PRESENT')?._count ?? 0;
-  const leave = attendance.find((row) => row.status === 'ON_LEAVE')?._count ?? 0;
   const absent = attendance.find((row) => row.status === 'ABSENT')?._count ?? 0;
-  res.json({ attendance: { present, absent, leave, marked: present + absent + leave, activeGuards }, payroll: payroll.totals });
+  res.json({ attendance: { present, absent, marked: present + absent, activeGuards }, payroll: payroll.totals });
 }));

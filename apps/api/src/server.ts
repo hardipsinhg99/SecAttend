@@ -3,7 +3,7 @@ import { config } from './config.js';
 import { prisma } from './lib/prisma.js';
 
 const server = app.listen(config.PORT, () => {
-  process.stdout.write(`SecAttend API listening on port ${config.PORT}\n`);
+  process.stdout.write(`SHREEDEVI SECURITY SERVICE API listening on port ${config.PORT}\n`);
 });
 
 async function shutdown(signal: string) {

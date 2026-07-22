@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-function calculate(guardGross: number, companyGross: number, days: number, leaveDays: number, absentDays = 0, preEmploymentDays = 0) {
+function calculate(guardGross: number, companyGross: number, days: number, absentDays = 0, preEmploymentDays = 0) {
   const guardDailyRate = guardGross / days;
   const companyDailyRate = companyGross / days;
-  const nonPayableDays = leaveDays + absentDays + preEmploymentDays;
+  const nonPayableDays = absentDays + preEmploymentDays;
   return {
     guardDailyRate,
     guardDeductions: guardDailyRate * nonPayableDays,
@@ -13,7 +13,7 @@ function calculate(guardGross: number, companyGross: number, days: number, leave
 }
 
 describe('salary calculation', () => {
-  it('deducts one daily rate per leave day', () => {
+  it('deducts one daily rate per absent day', () => {
     const result = calculate(30000, 38000, 31, 2);
     expect(result.guardDailyRate).toBeCloseTo(967.74, 2);
     expect(result.guardDeductions).toBeCloseTo(1935.48, 2);
@@ -22,7 +22,7 @@ describe('salary calculation', () => {
   });
 
   it('prorates a mid-month joiner and deducts absences', () => {
-    const result = calculate(28000, 35000, 28, 0, 1, 11);
+    const result = calculate(28000, 35000, 28, 1, 11);
     expect(result.guardNet).toBe(16000);
     expect(result.companyNet).toBe(20000);
   });
