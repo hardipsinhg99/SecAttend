@@ -8,6 +8,7 @@ import { prisma } from '../lib/prisma.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { randomUUID } from 'node:crypto';
+import { extractGuardImportRows } from '../lib/guard-import.js';
 
 export const guardsRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -33,12 +34,6 @@ const guardInput = z.object({
 function employeeIdentity(value?: string) {
   const provisional = !value || value.trim().toUpperCase() === 'NEW';
   return { employeeId: provisional ? `NEW-${randomUUID().slice(0, 8).toUpperCase()}` : value!.trim(), provisionalEmployeeId: provisional };
-}
-
-function excelDate(value: unknown) {
-  if (typeof value !== 'number') return value || undefined;
-  const parsed = XLSX.SSF.parse_date_code(value);
-  return parsed ? new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d)) : undefined;
 }
 
 guardsRouter.use(authenticate);
@@ -107,31 +102,34 @@ guardsRouter.post('/import/excel', authorize('ADMIN'), upload.single('file'), as
   const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]!];
   if (!sheet) throw new AppError(422, 'The workbook has no readable worksheet');
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+  const rows = extractGuardImportRows(sheet);
+  if (!rows.length) throw new AppError(422, 'No guard rows were found. Use the roster template or a supported attendance register.');
   if (rows.length > 1000) throw new AppError(422, 'Import is limited to 1,000 rows at a time');
   const locations = await prisma.location.findMany({ where: { status: 'ACTIVE' } });
-  const byName = new Map(locations.map((location) => [location.name.toLowerCase(), location.id]));
+  const locationKey = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const byName = new Map(locations.map((location) => [locationKey(location.name), location.id]));
   const errors: { row: number; message: string }[] = [];
   let imported = 0;
-  for (const [index, row] of rows.entries()) {
-    const locationId = byName.get(String(row.Location).trim().toLowerCase());
+  for (const row of rows) {
+    const locationId = byName.get(locationKey(row.location));
+    if (!locationId) { errors.push({ row: row.rowNumber, message: `Active location "${row.location || 'blank'}" was not found. Add it in Locations first.` }); continue; }
     const parsed = guardInput.safeParse({
-      name: row.Name, employeeId: row.EmployeeID, phone: row.Phone ? String(row.Phone) : '', email: row.Email,
-      address: row.Address, locationId,
-      joiningDate: excelDate(row.DateOfJoining),
-      project: row.Project,
-      village: row.Village,
-      shiftType: String(row.Shift ?? '').trim().toUpperCase() || undefined,
-      postDetail: row.PostDetail,
-      designation: String(row.Designation ?? '').trim().toUpperCase() === 'SUPERVISOR' ? 'SUPERVISOR' : 'SECURITY_GUARD',
-      guardMonthlySalary: row.GuardMonthlySalary ?? row.MonthlySalary,
-      companyMonthlySalary: row.CompanyMonthlySalary ?? row.GuardMonthlySalary ?? row.MonthlySalary,
+      name: row.name, employeeId: row.employeeId, phone: row.phone, email: row.email,
+      address: row.address, locationId,
+      joiningDate: row.joiningDate,
+      project: row.project,
+      village: row.village,
+      shiftType: row.shiftType || undefined,
+      postDetail: row.postDetail,
+      designation: row.designation,
+      guardMonthlySalary: row.guardMonthlySalary,
+      companyMonthlySalary: row.companyMonthlySalary,
     });
-    if (!parsed.success) { errors.push({ row: index + 2, message: parsed.error.issues[0]?.message ?? 'Invalid row' }); continue; }
+    if (!parsed.success) { errors.push({ row: row.rowNumber, message: parsed.error.issues[0]?.message ?? 'Invalid row' }); continue; }
     try {
       await prisma.guard.create({ data: { ...parsed.data, ...employeeIdentity(parsed.data.employeeId), phone: parsed.data.phone || null, address: parsed.data.address || null, email: parsed.data.email || null, project: parsed.data.project || null, village: parsed.data.village || null, postDetail: parsed.data.postDetail || null } });
       imported += 1;
-    } catch { errors.push({ row: index + 2, message: 'Employee ID or email already exists' }); }
+    } catch { errors.push({ row: row.rowNumber, message: 'Employee ID or email already exists' }); }
   }
   await audit(req, 'IMPORT', 'Guard', undefined, { imported, rejected: errors.length });
   res.json({ imported, rejected: errors.length, errors });
