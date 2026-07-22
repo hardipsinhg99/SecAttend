@@ -97,6 +97,6 @@ For larger deployments, the API can run as multiple stateless replicas behind a 
 - Add object storage for photos/import artifacts.
 - Configure centralized logs and alerting.
 - Run `prisma migrate deploy` during deployment (the supplied API image already does this).
-
-For an existing database originally created with `prisma db push`, baseline it once with `npx prisma migrate resolve --applied 202607230001_init`, then run `npx prisma migrate deploy`. The next migration adds both company-side salary columns while preserving the original guard salary values.
 - Add your organization’s retention and privacy policy.
+
+For an existing database originally created with `prisma db push`, the supplied API entrypoint detects Prisma error `P3005`, records the matching legacy baseline once, and then applies the dual-salary migration. Other migration errors still abort startup instead of being ignored.
