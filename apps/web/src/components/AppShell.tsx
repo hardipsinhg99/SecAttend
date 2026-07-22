@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Menu, ShieldCheck, Users, WalletCards, X } from 'lucide-react';
+import { BarChart3, Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Menu, ShieldCheck, Users, WalletCards } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui';
 import { BrandLogo } from './BrandLogo';
@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const displayName = user?.role === 'ADMIN' ? 'Admin' : user?.name ?? '';
   return <div className="app-shell">
     <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
-      <div className="sidebar__brand"><BrandLogo /><div><strong>SHREEDEVI SECURITY SERVICE</strong><span>Workforce operations</span></div><button className="icon-button sidebar__close" onClick={() => setOpen(false)} aria-label="Close navigation"><X /></button></div>
+      <div className="sidebar__brand"><BrandLogo /><div><strong>SHREEDEVI SECURITY SERVICE</strong><span>Workforce operations</span></div></div>
       <div className="sidebar__context"><span>Workspace</span><strong>SHREEDEVI SECURITY SERVICE</strong><ChevronDown size={15} /></div>
       <nav aria-label="Main navigation">{nav.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} onClick={() => setOpen(false)} className={({ isActive }) => isActive ? 'active' : ''}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>
       <div className="sidebar__status"><span className="status-dot" /><div><strong>All systems operational</strong><span>Last sync just now</span></div></div>
