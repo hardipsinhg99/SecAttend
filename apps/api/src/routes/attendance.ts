@@ -4,13 +4,15 @@ import { audit } from '../lib/audit.js';
 import { AppError, asyncHandler } from '../lib/http.js';
 import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
+import { businessDateKey } from '../lib/business-date.js';
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate);
 
 function day(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new AppError(422, 'Date must use YYYY-MM-DD format');
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) throw new AppError(422, 'Date must use YYYY-MM-DD format');
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) throw new AppError(422, 'Date must be a valid calendar date');
   return parsed;
 }
 
@@ -38,16 +40,18 @@ attendanceRouter.get('/calendar/summary', asyncHandler(async (req, res) => {
 }));
 
 attendanceRouter.get('/:date', asyncHandler(async (req, res) => {
-  const date = day(String(req.params.date));
+  const dateKey = String(req.params.date);
+  const date = day(dateKey);
   const eligibility = { OR: [{ joiningDate: null }, { joiningDate: { lte: date } }] };
   const where = req.user!.role === 'MANAGER' ? { status: 'ACTIVE' as const, ...eligibility, location: { managers: { some: { id: req.user!.id } } } } : { status: 'ACTIVE' as const, ...eligibility };
   const guards = await prisma.guard.findMany({ where, include: { location: true, attendance: { where: { date }, select: { id: true, status: true, markedAt: true, updatedAt: true } } }, orderBy: { name: 'asc' } });
-  res.json({ data: guards.map(({ attendance, ...guard }) => ({ ...guard, attendance: attendance[0] ?? null })), editable: date.getTime() <= Date.now() });
+  res.json({ data: guards.map(({ attendance, ...guard }) => ({ ...guard, attendance: attendance[0] ?? null })), editable: dateKey <= businessDateKey() });
 }));
 
 attendanceRouter.post('/:date', asyncHandler(async (req, res) => {
-  const date = day(String(req.params.date));
-  if (date.getTime() > Date.now()) throw new AppError(422, 'Future attendance cannot be marked');
+  const dateKey = String(req.params.date);
+  const date = day(dateKey);
+  if (dateKey > businessDateKey()) throw new AppError(422, 'Future attendance cannot be marked');
   const input = z.object({ records: z.array(z.object({ guardId: z.string(), status: z.enum(['PRESENT', 'ABSENT']) })).min(1).max(500) }).parse(req.body);
   const uniqueIds = [...new Set(input.records.map((record) => record.guardId))];
   if (uniqueIds.length !== input.records.length) throw new AppError(422, 'Duplicate guard records are not allowed');

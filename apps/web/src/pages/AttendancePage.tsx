@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { addMonths, eachDayOfInterval, endOfMonth, format, getDay, isAfter, isSameDay, startOfMonth, subMonths } from 'date-fns';
+import { addMonths, eachDayOfInterval, endOfMonth, format, getDay, isSameDay, startOfMonth, subMonths } from 'date-fns';
 import { CalendarCheck, Check, ChevronLeft, ChevronRight, Clock3, Save, UserX } from 'lucide-react';
 import { api } from '../lib/api';
+import { businessDateKey, businessToday, localCalendarDateKey } from '../lib/businessDate';
 import type { AttendanceStatus, Guard } from '../types';
 import { Avatar, LoadingState, PageHeader, Toast } from '../components/ui';
 
 type DaySummary = { date: string; marked: number; present: number; absent: number; total: number; state: string };
 
 export function AttendancePage() {
-  const [month, setMonth] = useState(startOfMonth(new Date()));
-  const [selected, setSelected] = useState(new Date());
+  const [month, setMonth] = useState(() => startOfMonth(businessToday()));
+  const [selected, setSelected] = useState(() => businessToday());
   const [summary, setSummary] = useState<DaySummary[]>([]);
   const [guards, setGuards] = useState<Guard[]>([]);
   const [records, setRecords] = useState<Record<string, AttendanceStatus>>({});
@@ -18,7 +19,9 @@ export function AttendancePage() {
   const [editable, setEditable] = useState(true);
   const [toast, setToast] = useState('');
   const monthKey = format(month, 'yyyy-MM');
-  const dateKey = format(selected, 'yyyy-MM-dd');
+  const dateKey = localCalendarDateKey(selected);
+  const today = businessToday();
+  const todayKey = businessDateKey();
 
   const loadSummary = useCallback(() => api<{ data: DaySummary[] }>(`/attendance/calendar/summary?month=${monthKey}`).then((result) => setSummary(result.data)), [monthKey]);
   const loadDay = useCallback(async () => {
@@ -27,11 +30,11 @@ export function AttendancePage() {
       const result = await api<{ data: Guard[]; editable: boolean }>(`/attendance/${dateKey}`);
       setGuards(result.data);
       setRecords(Object.fromEntries(result.data.filter((guard) => guard.attendance).map((guard) => [guard.id, guard.attendance!.status])));
-      setEditable(result.editable && !isAfter(selected, new Date()));
+      setEditable(result.editable && dateKey <= businessDateKey());
     } finally {
       setLoading(false);
     }
-  }, [dateKey, selected]);
+  }, [dateKey]);
 
   useEffect(() => { void loadSummary(); }, [loadSummary]);
   useEffect(() => { void loadDay(); }, [loadDay]);
@@ -40,7 +43,7 @@ export function AttendancePage() {
   const summaryMap = useMemo(() => new Map(summary.map((item) => [item.date, item])), [summary]);
   const days = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
   const blanks = Array.from({ length: getDay(startOfMonth(month)) });
-  function statusFor(day: Date) { if (isAfter(day, new Date())) return 'future'; return summaryMap.get(format(day, 'yyyy-MM-dd'))?.state ?? 'none'; }
+  function statusFor(day: Date) { if (localCalendarDateKey(day) > todayKey) return 'future'; return summaryMap.get(localCalendarDateKey(day))?.state ?? 'none'; }
   function markAll() { setRecords(Object.fromEntries(guards.map((guard) => [guard.id, 'PRESENT']))); }
 
   async function save() {
@@ -66,8 +69,8 @@ export function AttendancePage() {
         <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
         <div className="calendar-grid">{blanks.map((_, index) => <span key={`blank-${index}`} />)}{days.map((day) => {
           const state = statusFor(day);
-          const item = summaryMap.get(format(day, 'yyyy-MM-dd'));
-          return <button key={day.toISOString()} className={`${state} ${isSameDay(day, selected) ? 'selected' : ''} ${isSameDay(day, new Date()) ? 'today' : ''}`} disabled={state === 'future'} onClick={() => setSelected(day)}><span>{format(day, 'd')}</span><i />{item && <small>{item.marked}/{item.total}</small>}</button>;
+          const item = summaryMap.get(localCalendarDateKey(day));
+          return <button key={day.toISOString()} className={`${state} ${isSameDay(day, selected) ? 'selected' : ''} ${isSameDay(day, today) ? 'today' : ''}`} disabled={state === 'future'} onClick={() => setSelected(day)}><span>{format(day, 'd')}</span><i />{item && <small>{item.marked}/{item.total}</small>}</button>;
         })}</div>
         <footer className="calendar-legend"><span><i className="complete" />Complete</span><span><i className="partial" />Partial</span><span><i className="none" />Unmarked</span></footer>
       </article>
