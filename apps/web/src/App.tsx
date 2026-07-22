@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { AppShell } from './components/AppShell';
+import { BrandLogo } from './components/BrandLogo';
 import { LoginPage } from './pages/LoginPage';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
@@ -14,7 +15,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({
 
 export default function App() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="app-loader"><span className="brand-mark"><i /><i /><i /></span><p>Preparing operations…</p></div>;
+  if (loading) return <div className="app-loader"><BrandLogo decorative /><p>Preparing operations…</p></div>;
   if (!user) return <Routes><Route path="*" element={<LoginPage />} /></Routes>;
   return <AppShell><Suspense fallback={<LoadingFallback />}><Routes>
     <Route path="/" element={<DashboardPage />} />
