@@ -50,6 +50,7 @@ model User {
   attendanceMarked Attendance[]     @relation("AttendanceMarker")
   auditLogs        AuditLog[]       @relation("AuditActor")
   payrollPayments  PayrollPayment[] @relation("PayrollPaymentUpdater")
+  expensesRecorded Expense[]        @relation("ExpenseRecorder")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -155,6 +156,22 @@ model PayrollPayment {
 
   @@unique([guardId, monthYear])
   @@index([monthYear, status])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  amount      Decimal  @db.Decimal(12, 2)
+  expenseDate DateTime @db.Date
+  note        String?
+  createdById String?
+  createdBy   User?    @relation("ExpenseRecorder", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([expenseDate])
+  @@index([category])
 }
 
 model AuditLog {

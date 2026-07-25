@@ -77,10 +77,11 @@ export async function getLivePayroll(month: string) {
     guardGross: money(sum.guardGross + row.guardGrossSalary),
     guardDeductions: money(sum.guardDeductions + row.guardDeductions),
     guardNet: money(sum.guardNet + row.guardNetSalary),
+    guardPaid: money(sum.guardPaid + (row.paymentStatus === 'PAID' ? row.guardNetSalary : 0)),
     companyGross: money(sum.companyGross + row.companyGrossSalary),
     companyDeductions: money(sum.companyDeductions + row.companyDeductions),
     companyNet: money(sum.companyNet + row.companyNetSalary),
     margin: money(sum.margin + row.companyNetSalary - row.guardNetSalary),
-  }), { guardGross: 0, guardDeductions: 0, guardNet: 0, companyGross: 0, companyDeductions: 0, companyNet: 0, margin: 0 });
+  }), { guardGross: 0, guardDeductions: 0, guardNet: 0, guardPaid: 0, companyGross: 0, companyDeductions: 0, companyNet: 0, margin: 0 });
   return { data, totals, period: { month, totalDays, calculatedAt: new Date().toISOString() } };
 }

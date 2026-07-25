@@ -71,7 +71,7 @@ guardsRouter.get('/:id', asyncHandler(async (req, res) => {
   res.json({ data: guard });
 }));
 
-guardsRouter.post('/', authorize('ADMIN'), asyncHandler(async (req, res) => {
+guardsRouter.post('/', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
   const input = guardInput.parse(req.body);
   const locationExists = await prisma.location.count({ where: { id: input.locationId, status: 'ACTIVE' } });
   if (!locationExists) throw new AppError(422, 'Select an active location');
