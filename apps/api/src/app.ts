@@ -12,6 +12,7 @@ import { salaryRouter } from './routes/salary.js';
 import { reportsRouter } from './routes/reports.js';
 import { locationsRouter } from './routes/locations.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { expensesRouter } from './routes/expenses.js';
 import { asyncHandler, errorHandler, notFound } from './lib/http.js';
 import { prisma } from './lib/prisma.js';
 
@@ -34,5 +35,6 @@ app.use('/api/managers', managersRouter);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/salary', salaryRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/expenses', expensesRouter);
 app.use(notFound);
 app.use(errorHandler);

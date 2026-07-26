@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Menu, ShieldCheck, Users, WalletCards } from 'lucide-react';
+import { BarChart3, Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Menu, Receipt, ShieldCheck, Users, WalletCards } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui';
 import { BrandLogo } from './BrandLogo';
@@ -12,6 +12,7 @@ const adminNav = [
   { to: '/locations', label: 'Locations', icon: Building2 },
   { to: '/attendance', label: 'Attendance', icon: CalendarDays },
   { to: '/payroll', label: 'Payroll', icon: WalletCards },
+  { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 

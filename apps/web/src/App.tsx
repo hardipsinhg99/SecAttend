@@ -12,6 +12,7 @@ const LocationsPage = lazy(() => import('./pages/LocationsPage').then((module) =
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then((module) => ({ default: module.AttendancePage })));
 const PayrollPage = lazy(() => import('./pages/PayrollPage').then((module) => ({ default: module.PayrollPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
+const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then((module) => ({ default: module.ExpensesPage })));
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/locations" element={<LocationsPage />} />
       <Route path="/payroll" element={<PayrollPage />} />
       <Route path="/reports" element={<ReportsPage />} />
+      <Route path="/expenses" element={<ExpensesPage />} />
     </>}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></AppShell>;

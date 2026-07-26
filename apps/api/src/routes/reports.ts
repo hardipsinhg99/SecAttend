@@ -92,12 +92,15 @@ reportsRouter.get('/compliance', asyncHandler(async (req, res) => {
 reportsRouter.get('/summary', asyncHandler(async (req, res) => {
   const month = z.string().regex(/^\d{4}-\d{2}$/).parse(req.query.month);
   const { start, end } = payrollPeriod(month);
-  const [attendance, payroll, activeGuards] = await Promise.all([
+  const [attendance, payroll, activeGuards, expenseAggregate] = await Promise.all([
     prisma.attendance.groupBy({ by: ['status'], where: { date: { gte: start, lt: end } }, _count: true }),
     getLivePayroll(month),
     prisma.guard.count({ where: { status: 'ACTIVE' } }),
+    prisma.expense.aggregate({ where: { expenseDate: { gte: start, lt: end } }, _sum: { amount: true } }),
   ]);
   const present = attendance.find((row) => row.status === 'PRESENT')?._count ?? 0;
   const absent = attendance.find((row) => row.status === 'ABSENT')?._count ?? 0;
-  res.json({ attendance: { present, absent, marked: present + absent, activeGuards }, payroll: payroll.totals });
+  const expenses = Number(expenseAggregate._sum.amount ?? 0);
+  const profit = payroll.totals.companyNet - payroll.totals.guardPaid - expenses;
+  res.json({ attendance: { present, absent, marked: present + absent, activeGuards }, payroll: payroll.totals, expenses, profit });
 }));

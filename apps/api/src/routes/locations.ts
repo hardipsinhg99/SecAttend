@@ -33,7 +33,7 @@ locationsRouter.get('/', asyncHandler(async (req, res) => {
   res.json({ data: locations });
 }));
 
-locationsRouter.post('/', authorize('ADMIN'), asyncHandler(async (req, res) => {
+locationsRouter.post('/', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req, res) => {
   const input = locationInput.parse(req.body);
   const location = await prisma.location.create({ data: { ...input, clientName: input.clientName || null }, include: { _count: { select: { guards: true, managers: true } } } });
   await audit(req, 'CREATE', 'Location', location.id, { name: location.name });
