@@ -1,4 +1,5 @@
 import type { Guard, Location } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { AppError } from './http.js';
 import { prisma } from './prisma.js';
 
@@ -84,4 +85,22 @@ export async function getLivePayroll(month: string) {
     margin: money(sum.margin + row.companyNetSalary - row.guardNetSalary),
   }), { guardGross: 0, guardDeductions: 0, guardNet: 0, guardPaid: 0, companyGross: 0, companyDeductions: 0, companyNet: 0, margin: 0 });
   return { data, totals, period: { month, totalDays, calculatedAt: new Date().toISOString() } };
+}
+
+export async function persistPayrollForMonth(month: string) {
+  const { start } = payrollPeriod(month);
+  const payroll = await getLivePayroll(month);
+  return prisma.$transaction(payroll.data.map((row) => prisma.salaryRecord.upsert({
+    where: { guardId_monthYear: { guardId: row.guard.id, monthYear: start } },
+    create: {
+      guardId: row.guard.id, monthYear: start, totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: 0,
+      guardDailyRate: new Prisma.Decimal(row.guardDailyRate), guardGrossSalary: new Prisma.Decimal(row.guardGrossSalary), guardDeductions: new Prisma.Decimal(row.guardDeductions), guardNetSalary: new Prisma.Decimal(row.guardNetSalary),
+      companyDailyRate: new Prisma.Decimal(row.companyDailyRate), companyGrossSalary: new Prisma.Decimal(row.companyGrossSalary), companyDeductions: new Prisma.Decimal(row.companyDeductions), companyNetSalary: new Prisma.Decimal(row.companyNetSalary),
+    },
+    update: {
+      totalDays: row.totalDays, eligibleDays: row.eligibleDays, presentDays: row.presentDays, absentDays: row.absentDays, leaveDays: 0,
+      guardDailyRate: new Prisma.Decimal(row.guardDailyRate), guardGrossSalary: new Prisma.Decimal(row.guardGrossSalary), guardDeductions: new Prisma.Decimal(row.guardDeductions), guardNetSalary: new Prisma.Decimal(row.guardNetSalary),
+      companyDailyRate: new Prisma.Decimal(row.companyDailyRate), companyGrossSalary: new Prisma.Decimal(row.companyGrossSalary), companyDeductions: new Prisma.Decimal(row.companyDeductions), companyNetSalary: new Prisma.Decimal(row.companyNetSalary), generatedAt: new Date(),
+    },
+  })));
 }

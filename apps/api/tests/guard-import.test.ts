@@ -28,5 +28,36 @@ describe('guard workbook import', () => {
     expect(excelDate('20/12/2025')).toEqual(new Date('2025-12-20T00:00:00.000Z'));
     expect(excelDate('31/02/2025')).toBeUndefined();
   });
+
+  it('reads day-by-day P/A attendance columns from a monthly site register', () => {
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['ATTENDANCE REGISTER', 'MONTH', 'JAN-25'],
+      ['SITE: JUNIPER BHOGAT'],
+      ['Sr No', 'Security Guard Full Name', 'Date of Joining', 'Mobile No.', 'Location Detail', 'WED', 'THU', 'FRI', 'ABSENT', 'PRESENT DAYS'],
+      ['', '', '', '', '', 1, 2, 3, '', ''],
+      [1, 'SHETA NSINH BACHUBHA JADEJA', '10-09-2024', 9316174816, 'ZERO POINT (NIGHT)', 'P', 'P', 'A', 1, 2],
+    ]);
+    const rows = extractGuardImportRows(sheet);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.period).toEqual({ year: 2025, month: 0 });
+    expect(rows[0]?.attendance).toEqual([
+      { date: new Date(Date.UTC(2025, 0, 1)), status: 'PRESENT' },
+      { date: new Date(Date.UTC(2025, 0, 2)), status: 'PRESENT' },
+      { date: new Date(Date.UTC(2025, 0, 3)), status: 'ABSENT' },
+    ]);
+    expect(rows[0]).toMatchObject({ reportedAbsentDays: 1, reportedPresentDays: 2 });
+  });
+
+  it('ignores blank or unrecognized day marks instead of fabricating attendance', () => {
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['ATTENDANCE REGISTER', 'MONTH', 'FEB-25'],
+      ['SITE: JUNIPER BHOGAT'],
+      ['Sr No', 'Security Guard Full Name', 'Date of Joining', 'Mobile No.', 'Location Detail', 'SAT', 'SUN', 'MON'],
+      ['', '', '', '', '', 1, 2, 3],
+      [1, 'GOJIYA MAHESHKHIMBHAI', '01-06-2025', 9512515230, 'ZERO POINT (DAY)', 'P', '', 'X'],
+    ]);
+    const rows = extractGuardImportRows(sheet);
+    expect(rows[0]?.attendance).toEqual([{ date: new Date(Date.UTC(2025, 1, 1)), status: 'PRESENT' }]);
+  });
 });
 

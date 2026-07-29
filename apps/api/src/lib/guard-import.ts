@@ -1,5 +1,7 @@
 import XLSX from 'xlsx';
 
+export type AttendanceMark = { date: Date; status: 'PRESENT' | 'ABSENT' };
+
 export type GuardImportRow = {
   rowNumber: number;
   name: string;
@@ -16,6 +18,10 @@ export type GuardImportRow = {
   designation: 'SECURITY_GUARD' | 'SUPERVISOR';
   guardMonthlySalary: unknown;
   companyMonthlySalary: unknown;
+  period: { year: number; month: number } | undefined;
+  attendance: AttendanceMark[];
+  reportedAbsentDays: number | undefined;
+  reportedPresentDays: number | undefined;
 };
 
 const aliases = {
@@ -33,7 +39,21 @@ const aliases = {
   designation: ['DESIGNATION'],
   guardMonthlySalary: ['GUARDMONTHLYSALARY', 'MONTHLYSALARY', 'FIXSALARY', 'GUARDSALARY'],
   companyMonthlySalary: ['COMPANYMONTHLYSALARY', 'COMPANYSALARY', 'COMPANYBILLING', 'BILLINGSALARY'],
+  reportedAbsentDays: ['ABSENT', 'ABSENTDAYS'],
+  reportedPresentDays: ['PRESENTDAYS', 'PRESENTDAY'],
 } as const;
+
+const MONTH_INDEX: Record<string, number> = {
+  JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+};
+
+function extractPeriod(precedingText: string[]) {
+  for (const value of precedingText) {
+    const match = value.toUpperCase().match(/\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)-(\d{2})\b/);
+    if (match) return { year: 2000 + Number(match[2]), month: MONTH_INDEX[match[1]!]! };
+  }
+  return undefined;
+}
 
 function headerKey(value: unknown) {
   return String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -79,7 +99,19 @@ export function extractGuardImportRows(sheet: XLSX.WorkSheet): GuardImportRow[] 
   const columns = Object.fromEntries(Object.keys(aliases).map((field) => [field, column(field as keyof typeof aliases)])) as Record<keyof typeof aliases, number>;
   if (columns.name < 0) return [];
 
-  const siteLocation = displayRows.slice(0, headerIndex).flat().map(text).find((value) => /^SITE\s*:/i.test(value))?.replace(/^SITE\s*:\s*/i, '').trim() ?? '';
+  const precedingText = displayRows.slice(0, headerIndex).flat().map(text);
+  const siteLocation = precedingText.find((value) => /^SITE\s*:/i.test(value))?.replace(/^SITE\s*:\s*/i, '').trim() ?? '';
+  const period = isAttendanceRegister ? extractPeriod(precedingText) : undefined;
+  const daysInMonth = period ? new Date(Date.UTC(period.year, period.month + 1, 0)).getUTCDate() : 0;
+  const dayColumns: { index: number; day: number }[] = [];
+  if (isAttendanceRegister) {
+    headerRow.forEach((cell, index) => {
+      const day = Number(text(secondaryHeader[index]));
+      if (/^(MON|TUE|WED|THU|FRI|SAT|SUN)/i.test(text(cell)) && Number.isInteger(day) && day >= 1 && day <= 31) {
+        dayColumns.push({ index, day });
+      }
+    });
+  }
   const startIndex = headerIndex + (isAttendanceRegister ? 2 : 1);
   const valueAt = (row: unknown[], field: keyof typeof aliases) => columns[field] < 0 ? '' : row[columns[field]];
   const output: GuardImportRow[] = [];
@@ -96,6 +128,18 @@ export function extractGuardImportRows(sheet: XLSX.WorkSheet): GuardImportRow[] 
     const postDetail = text(valueAt(display, 'postDetail'));
     const explicitDesignation = text(valueAt(display, 'designation')).toUpperCase();
     const supervisor = explicitDesignation === 'SUPERVISOR' || village.toUpperCase() === 'SUPERVISOR' || postDetail.toUpperCase() === 'SUPERVISOR';
+    const attendance: AttendanceMark[] = [];
+    if (period) {
+      for (const { index: colIndex, day } of dayColumns) {
+        if (day > daysInMonth) continue;
+        const mark = text(display[colIndex]).toUpperCase();
+        if (mark === 'P' || mark === 'A') {
+          attendance.push({ date: new Date(Date.UTC(period.year, period.month, day)), status: mark === 'P' ? 'PRESENT' : 'ABSENT' });
+        }
+      }
+    }
+    const reportedAbsent = Number(text(valueAt(display, 'reportedAbsentDays')));
+    const reportedPresent = Number(text(valueAt(display, 'reportedPresentDays')));
     output.push({
       rowNumber: index + 1,
       name,
@@ -112,6 +156,10 @@ export function extractGuardImportRows(sheet: XLSX.WorkSheet): GuardImportRow[] 
       designation: supervisor ? 'SUPERVISOR' : 'SECURITY_GUARD',
       guardMonthlySalary: guardSalary,
       companyMonthlySalary: companySalary === '' ? guardSalary : companySalary,
+      period,
+      attendance,
+      reportedAbsentDays: Number.isFinite(reportedAbsent) && text(valueAt(display, 'reportedAbsentDays')) !== '' ? reportedAbsent : undefined,
+      reportedPresentDays: Number.isFinite(reportedPresent) && text(valueAt(display, 'reportedPresentDays')) !== '' ? reportedPresent : undefined,
     });
   }
   return output;

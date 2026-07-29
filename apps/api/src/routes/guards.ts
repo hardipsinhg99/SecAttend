@@ -9,6 +9,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { audit } from '../lib/audit.js';
 import { randomUUID } from 'node:crypto';
 import { extractGuardImportRows } from '../lib/guard-import.js';
+import { persistPayrollForMonth } from '../lib/payroll.js';
 
 export const guardsRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -100,37 +101,71 @@ guardsRouter.delete('/:id', authorize('ADMIN'), asyncHandler(async (req, res) =>
 guardsRouter.post('/import/excel', authorize('ADMIN'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) throw new AppError(400, 'An Excel file is required');
   const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]!];
-  if (!sheet) throw new AppError(422, 'The workbook has no readable worksheet');
-  const rows = extractGuardImportRows(sheet);
+  if (!workbook.SheetNames.length) throw new AppError(422, 'The workbook has no readable worksheet');
+  const rows = workbook.SheetNames.flatMap((name) => extractGuardImportRows(workbook.Sheets[name]!));
   if (!rows.length) throw new AppError(422, 'No guard rows were found. Use the roster template or a supported attendance register.');
   if (rows.length > 1000) throw new AppError(422, 'Import is limited to 1,000 rows at a time');
-  const locations = await prisma.location.findMany({ where: { status: 'ACTIVE' } });
+
   const locationKey = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const byName = new Map(locations.map((location) => [locationKey(location.name), location.id]));
+  const locations = await prisma.location.findMany({ where: { status: 'ACTIVE' } });
+  const locationByKey = new Map(locations.map((location) => [locationKey(location.name), location]));
+  const existingGuards = await prisma.guard.findMany({ where: { status: 'ACTIVE' } });
+  const guardByPhone = new Map(existingGuards.filter((guard) => guard.phone).map((guard) => [`${guard.locationId}:${guard.phone}`, guard]));
+  const guardByName = new Map(existingGuards.map((guard) => [`${guard.locationId}:${guard.name.trim().toLowerCase()}`, guard]));
+
   const errors: { row: number; message: string }[] = [];
   let imported = 0;
+  let attendanceWritten = 0;
+  const monthsTouched = new Set<string>();
+
   for (const row of rows) {
-    const locationId = byName.get(locationKey(row.location));
-    if (!locationId) { errors.push({ row: row.rowNumber, message: `Active location "${row.location || 'blank'}" was not found. Add it in Locations first.` }); continue; }
-    const parsed = guardInput.safeParse({
-      name: row.name, employeeId: row.employeeId, phone: row.phone, email: row.email,
-      address: row.address, locationId,
-      joiningDate: row.joiningDate,
-      project: row.project,
-      village: row.village,
-      shiftType: row.shiftType || undefined,
-      postDetail: row.postDetail,
-      designation: row.designation,
-      guardMonthlySalary: row.guardMonthlySalary,
-      companyMonthlySalary: row.companyMonthlySalary,
-    });
-    if (!parsed.success) { errors.push({ row: row.rowNumber, message: parsed.error.issues[0]?.message ?? 'Invalid row' }); continue; }
-    try {
-      await prisma.guard.create({ data: { ...parsed.data, ...employeeIdentity(parsed.data.employeeId), phone: parsed.data.phone || null, address: parsed.data.address || null, email: parsed.data.email || null, project: parsed.data.project || null, village: parsed.data.village || null, postDetail: parsed.data.postDetail || null } });
-      imported += 1;
-    } catch { errors.push({ row: row.rowNumber, message: 'Employee ID or email already exists' }); }
+    const key = locationKey(row.location);
+    if (!key) { errors.push({ row: row.rowNumber, message: 'Row has no site/location name' }); continue; }
+    let location = locationByKey.get(key);
+    if (!location) {
+      location = await prisma.location.create({ data: { name: row.location.trim() } });
+      locationByKey.set(key, location);
+    }
+
+    const phoneKey = row.phone.trim() ? `${location.id}:${row.phone.trim()}` : undefined;
+    const nameKey = `${location.id}:${row.name.trim().toLowerCase()}`;
+    let guard = (phoneKey && guardByPhone.get(phoneKey)) ?? guardByName.get(nameKey);
+
+    if (!guard) {
+      const parsed = guardInput.safeParse({
+        name: row.name, employeeId: row.employeeId, phone: row.phone, email: row.email,
+        address: row.address, locationId: location.id,
+        joiningDate: row.joiningDate,
+        project: row.project,
+        village: row.village,
+        shiftType: row.shiftType || undefined,
+        postDetail: row.postDetail,
+        designation: row.designation,
+        guardMonthlySalary: row.guardMonthlySalary,
+        companyMonthlySalary: row.companyMonthlySalary,
+      });
+      if (!parsed.success) { errors.push({ row: row.rowNumber, message: parsed.error.issues[0]?.message ?? 'Invalid row' }); continue; }
+      try {
+        guard = await prisma.guard.create({ data: { ...parsed.data, ...employeeIdentity(parsed.data.employeeId), phone: parsed.data.phone || null, address: parsed.data.address || null, email: parsed.data.email || null, project: parsed.data.project || null, village: parsed.data.village || null, postDetail: parsed.data.postDetail || null } });
+        imported += 1;
+        if (guard.phone) guardByPhone.set(`${location.id}:${guard.phone}`, guard);
+        guardByName.set(nameKey, guard);
+      } catch { errors.push({ row: row.rowNumber, message: 'Employee ID or email already exists' }); continue; }
+    }
+
+    if (row.attendance.length) {
+      await prisma.$transaction(row.attendance.map((mark) => prisma.attendance.upsert({
+        where: { guardId_date: { guardId: guard!.id, date: mark.date } },
+        create: { guardId: guard!.id, date: mark.date, status: mark.status, markedById: req.user!.id },
+        update: { status: mark.status, markedById: req.user!.id, markedAt: new Date() },
+      })));
+      attendanceWritten += row.attendance.length;
+      if (row.period) monthsTouched.add(`${row.period.year}-${String(row.period.month + 1).padStart(2, '0')}`);
+    }
   }
-  await audit(req, 'IMPORT', 'Guard', undefined, { imported, rejected: errors.length });
-  res.json({ imported, rejected: errors.length, errors });
+  for (const month of monthsTouched) {
+    await persistPayrollForMonth(month);
+  }
+  await audit(req, 'IMPORT', 'Guard', undefined, { imported, rejected: errors.length, attendanceWritten, monthsTouched: [...monthsTouched] });
+  res.json({ imported, rejected: errors.length, attendanceWritten, monthsTouched: [...monthsTouched], errors });
 }));

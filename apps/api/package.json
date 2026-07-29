@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:reset-production": "node dist/prisma/production-reset.js",
+    "migrate:historical-attendance": "tsx prisma/migrate-historical-attendance.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
